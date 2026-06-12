@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>채널메시지 타겟팅 분석 리포트</title>
+<style>
+  :root {
+    --blue-dk: #1e3a5f; --blue: #2563a8; --blue-lt: #dbeafe; --blue-bg: #eff6ff;
+    --green-dk: #14532d; --green: #16a34a; --green-lt: #dcfce7; --green-bg: #f0fdf4;
+    --red-dk: #7f1d1d; --red: #dc2626; --red-lt: #fee2e2;
+    --purple-dk: #4c1d95; --purple: #7c3aed; --purple-lt: #ede9fe; --purple-bg: #faf5ff;
+    --gray: #64748b; --gray-lt: #f1f5f9; --gray-bd: #e2e8f0;
+    --font: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: #f8fafc; color: #1e293b; font-size: 14px; line-height: 1.6; }
+
+  .header { background: linear-gradient(135deg, #1e3a5f 0%, #2563a8 100%); color: white; padding: 30px 40px 24px; }
+  .header h1 { font-size: 22px; font-weight: 800; }
+  .header .sub { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+  .header .pills { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .pill { background: rgba(255,255,255,0.18); border-radius: 20px; padding: 4px 14px; font-size: 12px; }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px 20px; }
+  .section { background: white; border-radius: 12px; border: 1px solid var(--gray-bd); margin-bottom: 20px; overflow: hidden; }
+  .sh { padding: 16px 22px 12px; border-bottom: 1px solid var(--gray-bd); display: flex; align-items: center; gap: 10px; }
+  .sh h2 { font-size: 15px; font-weight: 700; color: var(--blue-dk); }
+  .sb { padding: 18px 22px; }
+  .badge { font-size: 11px; padding: 2px 10px; border-radius: 20px; font-weight: 600; }
+  .b-blue { background: var(--blue-lt); color: var(--blue); }
+  .b-green { background: var(--green-lt); color: var(--green); }
+  .b-purple { background: var(--purple-lt); color: var(--purple); }
+
+  .info { background: var(--blue-bg); border-left: 4px solid var(--blue); border-radius: 0 6px 6px 0; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #1e3a5f; }
+  .warn { background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 10px 14px; margin: 10px 0; font-size: 12.5px; color: #78350f; }
+  .note { font-size: 11.5px; color: #94a3b8; margin-top: 8px; line-height: 1.6; }
+
+  /* 요약 카드 */
+  .sum-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 18px; }
+  @media(max-width:1000px){.sum-grid{grid-template-columns:repeat(3,1fr);}}
+  .sum-card { border: 1px solid var(--gray-bd); border-radius: 10px; overflow: hidden; }
+  .sum-card .sum-lbl { display: block; font-size: 12px; font-weight: 700; line-height: 1.4; padding: 9px 14px 8px; }
+  .sum-card .sum-body { display: block; padding: 14px 14px 12px; text-align: center; }
+  .sum-card .sum-val { display: block; font-size: 26px; font-weight: 800; line-height: 1.1; }
+  .sum-card .sum-pct { display: block; font-size: 14px; font-weight: 700; margin-top: 5px; }
+
+  /* 타겟팅 카드 */
+  .tc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  @media(max-width:900px){.tc-grid{grid-template-columns:1fr;}}
+  .tc { border: 1px solid var(--gray-bd); border-radius: 10px; padding: 16px; }
+  .tc-t { font-size: 14px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .tc-d { font-size: 13px; color: var(--gray); line-height: 1.75; }
+  .tc-d ul { padding-left: 18px; }
+  .tc.t-dong { border-top: 3px solid #16a34a; }
+  .tc.t-group { border-top: 3px solid #2563a8; }
+  .tc.t-demo { border-top: 3px solid #7c3aed; }
+  .tc.t-os { border-top: 3px solid #0891b2; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 20px; font-weight: 600; margin: 1px; }
+  .t-blue { background: #dbeafe; color: #1d4ed8; }
+  .t-grn  { background: #dcfce7; color: #166534; }
+  .t-prp  { background: #ede9fe; color: #6d28d9; }
+  .t-gry  { background: #f1f5f9; color: #475569; }
+  .t-red  { background: #fee2e2; color: #991b1b; }
+
+  /* 테이블 */
+  .tscroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f1f5f9; padding: 9px 10px; text-align: center; font-weight: 600; color: #334155; border-bottom: 2px solid var(--gray-bd); white-space: nowrap; position: sticky; top: 0; z-index: 1; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; text-align: right; }
+  td.l { text-align: left; }
+  td.c { text-align: center; }
+  tr:hover td { background: #f8fafc; }
+  tr:last-child td { border-bottom: none; }
+
+  /* 동보 강조 색 */
+  .c-dong { background: #dcfce7 !important; border-left: 2px solid #86efac; }
+  .c-tgt  { background: #dbeafe !important; border-left: 2px solid #93c5fd; }
+  .c-free { background: #fef9c3 !important; border-left: 1px solid #fde047; }
+  th.c-dong { background: #bbf7d0 !important; color: #166534; }
+  th.c-tgt  { background: #bfdbfe !important; color: #1d4ed8; }
+  th.c-free { background: #fef08a !important; color: #854d0e; }
+
+  /* 특수 행 */
+  tr.total td { background: #eff6ff; font-weight: 700; border-top: 2px solid var(--blue); }
+  tr.dong td { background: #f0fdf4; }
+  tr.hl td { background: #fffbeb; }    /* 변곡점 */
+
+  /* 비중 바 */
+  .bar-wrap { display: flex; align-items: center; gap: 6px; }
+  .bar { height: 8px; border-radius: 4px; display: inline-block; vertical-align: middle; }
+
+  /* 인사이트 박스 */
+  .ins-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  @media(max-width:900px){.ins-grid{grid-template-columns:1fr;}}
+  .ins { border: 1px solid var(--gray-bd); border-radius: 10px; padding: 14px; }
+  .ins-t { font-weight: 700; font-size: 13.5px; margin-bottom: 8px; }
+  .ins-b { font-size: 13px; color: var(--gray); line-height: 1.75; }
+  .ins-b ul { padding-left: 16px; }
+
+  .divider { height: 1px; background: var(--gray-bd); margin: 14px 0; }
+  .src { background: #f8fafc; border: 1px solid var(--gray-bd); border-radius: 8px; padding: 12px 16px; font-size: 12px; color: var(--gray); margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📊 채널메시지 타겟팅 분석 리포트</h1>
+  <div class="sub">친구수 구간별 동보 vs 타겟팅 비중 · 타겟팅 종류 상세 현황 · 위키 데이터 기준 정렬</div>
+  <div class="pills">
+    <span class="pill">📅 분석 기간: 2025-06-01 ~ 2026-05-31 (1년)</span>
+    <span class="pill">📌 타겟팅 기준: 위키 bizservice/2108398233 원본 기준 정렬</span>
+    <span class="pill">🔍 출처: bi_lake.plusfriend_send_msg</span>
+    <span class="pill">⏱ 생성: 2026-06-12</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- 0. 핵심 요약 -->
+<div class="section">
+  <div class="sh"><h2>⚡ 핵심 요약</h2><span class="badge b-blue">1년 전체 기준</span></div>
+  <div class="sb">
+    <div class="sum-grid">
+      <div class="sum-card">
+        <div class="sum-lbl" style="background:#2563a8;color:white;">1년 총 고유 메시지 수<br>(msg_id 중복제거 기준)</div>
+        <div class="sum-body">
+          <div class="sum-val" style="color:#2563a8;">1,912,344</div>
+        </div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-lbl" style="background:#16a34a;color:white;">논타게팅 (전체친구)<br>cpms=15 기준</div>
+        <div class="sum-body">
+          <div class="sum-val" style="color:#16a34a;">1,223,311</div>
+          <div class="sum-pct" style="color:#16a34a;">64.0%</div>
+        </div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-lbl" style="background:#1d4ed8;color:white;">타겟팅<br>cpms=20 기준</div>
+        <div class="sum-body">
+          <div class="sum-val" style="color:#1d4ed8;">508,076</div>
+          <div class="sum-pct" style="color:#1d4ed8;">26.6%</div>
+        </div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-lbl" style="background:#ca8a04;color:white;">인사말 메시지<br>cpms=0 (친구추가 자동발송)</div>
+        <div class="sum-body">
+          <div class="sum-val" style="color:#ca8a04;">180,957</div>
+          <div class="sum-pct" style="color:#ca8a04;">9.5%</div>
+        </div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-lbl" style="background:#6d28d9;color:white;">월평균 활성<br>발송 채널 수</div>
+        <div class="sum-body">
+          <div class="sum-val" style="color:#6d28d9;">~120K</div>
+        </div>
+      </div>
+    </div>
+    <div class="warn">
+      ⚠️ <strong>타겟팅 분류 기준:</strong>
+      위키(query-hive-734891.csv, 2026-01~04-21) 기준 논타게팅=377,403건/1.79B건, 타겟팅=154,646건/309M건과
+      <strong>cpms=15(논타게팅) / cpms=20(타겟팅)</strong> 분류가 가장 근접하게 일치합니다 (차이 3~5% 수준).
+      무료발송(cpms=0)은 논타게팅 계열이나 별도 집계합니다.
+    </div>
+  </div>
+</div>
+
+<!-- 1. 타겟팅 종류 완전 가이드 -->
+<div class="section">
+  <div class="sh">
+    <h2>🎯 채널메시지 타겟팅 종류 완전 가이드</h2>
+    <span class="badge b-blue">처음 보는 분도 이해 가능</span>
+  </div>
+  <div class="sb">
+    <div class="info">
+      채널 관리자(파트너)가 메시지를 보낼 때 <strong>"누구에게 보낼지" 조건을 설정할 수 있습니다.</strong>
+      조건 없음 = <b>동보(논타게팅)</b>, 조건 설정 = <b>타겟팅</b>.
+      타겟팅하면 더 적합한 사람에게 발송하지만 <b>수신 모수가 줄어 유상 매출은 감소할 수 있습니다.</b>
+    </div>
+
+    <div class="tc-grid">
+      <div class="tc t-dong">
+        <div class="tc-t">📢 논타게팅 — 동보 (전체친구 발송)</div>
+        <div class="tc-d">
+          <b>누구에게:</b> 채널을 구독(친구추가)한 모든 친구에게 동시 발송<br>
+          <b>특징:</b> 조건 없이 최대 모수에게 도달 / 열람율이 오히려 가장 높음<br>
+          <b>위키 열람율:</b> <span style="color:#166534;font-weight:700;">67.19%</span> — 전체 카테고리 중 1위<br>
+          <b>사용 비중:</b> 메시지 수 64%, 발송성공 수 ~85%
+          <ul style="margin-top:6px;">
+            <li>친구수가 적을수록(1만 이하) 비중이 높음 (60~74%)</li>
+            <li>친구수 5만~10만 구간이 전환점 (동보 44% → 타겟팅 51%로 역전)</li>
+            <li>친구수 30만+ 이상에서는 동보가 13% 수준으로 급감</li>
+          </ul>
+          <div style="margin-top:8px;">
+            <span class="tag t-grn">무료 가능</span>
+            <span class="tag t-grn">최대 도달</span>
+            <span class="tag t-grn">높은 열람율</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tc t-group">
+        <div class="tc-t">👥 그룹 기반 타겟팅 (4종류) — 타겟팅의 핵심</div>
+        <div class="tc-d">
+          <b>누구에게:</b> 채널 관리자가 직접 만든 "그룹"에 속한 친구만 발송<br>
+          <b>그룹이란?</b> 관리자가 분류한 고객 목록 (예: VIP/구매자/이벤트참여자)<br><br>
+          <span class="tag t-blue">그룹지정</span> 특정 그룹만 선택 → 타겟팅 메시지의 <b>82.8%</b> 차지<br>
+          열람율 63.84% / 발송성공수 기준 타겟팅 전체의 45%<br><br>
+          <span class="tag t-blue">그룹제외지정</span> 특정 그룹 제외 후 나머지 발송<br>
+          예: "이미 구매한 고객을 제외하고 발송"<br><br>
+          <span class="tag t-blue">그룹혼합지정</span> 포함그룹 + 제외그룹 동시 설정<br>
+          열람율 <b style="color:#16a34a;">72.96%</b> — 전체 카테고리 중 최고<br><br>
+          <span class="tag t-blue">그룹지정+그룹제외지정</span> 복합 조합<br>
+          <div style="margin-top:8px;">
+            <span class="tag t-blue">유상(cpms=20)</span>
+            <span class="tag t-blue">CRM 연동</span>
+            <span class="tag t-blue">가장 많이 사용</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tc t-demo">
+        <div class="tc-t">👤 인구통계 기반 타겟팅 (5종류)</div>
+        <div class="tc-d">
+          <b>누구에게:</b> 성별·연령·국가 등 조건에 맞는 친구만 발송<br><br>
+          <span class="tag t-prp">연령</span> 특정 연령대만 선택 — 열람율 65.45%<br>
+          <span class="tag t-prp">성별</span> 남/여 선택 — 열람율 61.73%<br>
+          <span class="tag t-prp">국가</span> 특정 국가 거주자 — 열람율 62.65%<br>
+          <span class="tag t-prp">연령+성별</span> 두 조건 동시 — 열람율 <span style="color:#dc2626;font-weight:700;">56.68%</span><br>
+          <span class="tag t-prp">연령+성별+국가</span> 세 조건 — 열람율 <span style="color:#dc2626;font-weight:700;">54.36%</span> (최저)<br><br>
+          <ul>
+            <li>조건이 많을수록 모수↓ 열람율↓ — 효과가 떨어지는 경향</li>
+            <li>발송 비중 합계 3% 미만으로 주력 방식은 아님</li>
+          </ul>
+          <div style="margin-top:8px;">
+            <span class="tag t-prp">유상(cpms=20)</span>
+            <span class="tag t-red">낮은 열람율</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tc t-os">
+        <div class="tc-t">📱 OS 기반 타겟팅</div>
+        <div class="tc-d">
+          <b>누구에게:</b> iOS 또는 Android 사용자 중 선택 발송<br>
+          <b>사용 예:</b> iOS 앱 업데이트 안내, Android 전용 기능 홍보<br><br>
+          <span class="tag t-blue">OS</span> iOS / Android 선택 — 열람율 65.01%<br><br>
+          <ul>
+            <li>앱·기기 특성에 맞는 발송 시 유용</li>
+            <li>사용 비중 0.1%로 매우 소량</li>
+          </ul>
+          <div style="margin-top:8px;">
+            <span class="tag t-blue">유상(cpms=20)</span>
+            <span class="tag t-gry">소량 사용</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 위키 원본 테이블 -->
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#1e293b;">
+      📋 타겟팅 종류별 성과 원본 — 위키(bizservice) 기준 (2026-01-01 ~ 2026-04-21)
+    </div>
+    <div class="tscroll">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left;">분류</th>
+          <th style="text-align:left;">타겟팅 종류</th>
+          <th class="c-dong">메시지 수</th>
+          <th class="c-dong">메시지<br>비중</th>
+          <th class="c-tgt">발송성공 수<br>(수신자 합계)</th>
+          <th class="c-tgt">발송량<br>비중</th>
+          <th>열람율<br>(노출/발송성공)</th>
+          <th>순위</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="dong">
+          <td class="l"><span class="tag t-grn">동보</span></td>
+          <td class="l"><strong>논타게팅 (전체친구)</strong></td>
+          <td class="c-dong"><strong>377,403</strong></td>
+          <td class="c-dong"><strong>70.9%</strong></td>
+          <td class="c-tgt"><strong>1,788,763,464</strong></td>
+          <td class="c-tgt"><strong>85.3%</strong></td>
+          <td class="c" style="color:#166534;font-weight:700;">67.19%</td>
+          <td class="c">🥇 1위</td>
+        </tr>
+        <tr class="total">
+          <td class="l" colspan="2"><span class="tag t-blue">타겟팅</span> 전체 합산</td>
+          <td class="c-dong"><strong>154,646</strong></td>
+          <td class="c-dong"><strong>29.1%</strong></td>
+          <td class="c-tgt"><strong>308,900,218</strong></td>
+          <td class="c-tgt"><strong>14.7%</strong></td>
+          <td class="c" style="color:#1d4ed8;font-weight:700;">63.75%</td>
+          <td class="c" style="font-size:12px;">논타게팅 대비<br>-3.44%p</td>
+        </tr>
+        <tr><td class="l" rowspan="4"><span class="tag t-blue">그룹</span></td>
+          <td class="l"><strong>그룹지정</strong> <span style="font-size:11px;color:#2563a8;">타겟팅의 82.8%</span></td>
+          <td>128,117</td><td>24.1%</td><td>139,089,533</td><td>6.6%</td>
+          <td class="c">63.84%</td><td class="c">🥈 타겟팅 내 2위</td></tr>
+        <tr><td class="l">그룹제외지정</td><td>8,957</td><td>1.7%</td><td>53,705,663</td><td>2.6%</td><td class="c">62.25%</td><td></td></tr>
+        <tr><td class="l"><strong>그룹혼합지정</strong></td><td>7,494</td><td>1.4%</td><td>20,296,413</td><td>1.0%</td>
+          <td class="c" style="color:#166534;font-weight:700;">72.96%</td><td class="c">🏆 전체 최고</td></tr>
+        <tr><td class="l">그룹지정+그룹제외지정</td><td>1,092</td><td>0.2%</td><td>13,403,962</td><td>0.6%</td><td class="c">63.98%</td><td></td></tr>
+        <tr><td class="l" rowspan="5"><span class="tag t-prp">인구통계</span></td>
+          <td class="l">연령</td><td>2,852</td><td>0.5%</td><td>34,412,215</td><td>1.6%</td><td class="c">65.45%</td><td></td></tr>
+        <tr><td class="l">국가</td><td>4,082</td><td>0.8%</td><td>22,651,476</td><td>1.1%</td><td class="c">62.65%</td><td></td></tr>
+        <tr><td class="l">연령+성별</td><td>987</td><td>0.2%</td><td>15,742,178</td><td>0.8%</td>
+          <td class="c" style="color:#dc2626;">56.68%</td><td class="c">⚠️ 낮음</td></tr>
+        <tr><td class="l">성별</td><td>261</td><td>0.0%</td><td>1,468,935</td><td>0.1%</td><td class="c">61.73%</td><td></td></tr>
+        <tr><td class="l">연령+성별+국가</td><td>343</td><td>0.1%</td><td>4,853,351</td><td>0.2%</td>
+          <td class="c" style="color:#dc2626;">54.36%</td><td class="c">⚠️ 최저</td></tr>
+        <tr><td class="l"><span class="tag t-gry">OS</span></td>
+          <td class="l">OS (iOS/Android)</td><td>461</td><td>0.1%</td><td>3,276,492</td><td>0.2%</td><td class="c">65.01%</td><td></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note">
+      📌 출처: wiki.daumkakao.com/spaces/bizservice/pages/2108398233 원본 데이터<br>
+      📌 열람율 = 노출수(impress_count) / 발송성공수(send_succ_count) · 기간: 2026-01-01 ~ 2026-04-21
+    </div>
+  </div>
+</div>
+
+<!-- 2. 전체 발송 규모 -->
+<div class="section">
+  <div class="sh"><h2>📬 전체 발송 규모 — 1년 월별 추이</h2><span class="badge b-green">2025-06 ~ 2026-05</span></div>
+  <div class="sb">
+    <div class="info">
+      <strong>메시지 수 기준:</strong> plusfriend_msg_id 고유 수 (1 배치 = 1 메시지).
+      위키 기준(cpms=15 = 논타게팅, cpms=20 = 타겟팅, cpms=0 = 무료발송)으로 분류합니다.
+    </div>
+    <div class="tscroll">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left;">월</th>
+          <th class="c-dong">논타게팅<br>메시지 수</th>
+          <th class="c-dong">논타게팅<br>비중</th>
+          <th class="c-dong">논타게팅<br>발송성공 수</th>
+          <th class="c-tgt">타겟팅<br>메시지 수</th>
+          <th class="c-tgt">타겟팅<br>비중</th>
+          <th class="c-tgt">타겟팅<br>발송성공 수</th>
+          <th class="c-free">인사말 메시지<br>(친구추가 자동)</th>
+          <th class="c-free">인사말<br>비중</th>
+          <th>총 메시지 수</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="l">2025-06</td>
+          <td class="c-dong">99,820</td><td class="c-dong">40.7%</td><td class="c-dong">488,968,803</td>
+          <td class="c-tgt">44,175</td><td class="c-tgt">18.0%</td><td class="c-tgt">57,017,116</td>
+          <td class="c-free">101,276</td><td class="c-free">41.3%</td><td>245,271</td></tr>
+        <tr><td class="l">2025-07</td>
+          <td class="c-dong">108,449</td><td class="c-dong">61.9%</td><td class="c-dong">537,416,699</td>
+          <td class="c-tgt">48,278</td><td class="c-tgt">27.6%</td><td class="c-tgt">63,316,166</td>
+          <td class="c-free">18,449</td><td class="c-free">10.5%</td><td>175,176</td></tr>
+        <tr><td class="l">2025-08</td>
+          <td class="c-dong">98,286</td><td class="c-dong">64.0%</td><td class="c-dong">486,186,058</td>
+          <td class="c-tgt">44,244</td><td class="c-tgt">28.8%</td><td class="c-tgt">63,175,885</td>
+          <td class="c-free">11,111</td><td class="c-free">7.2%</td><td>153,641</td></tr>
+        <tr><td class="l">2025-09</td>
+          <td class="c-dong">110,080</td><td class="c-dong">66.1%</td><td class="c-dong">514,609,264</td>
+          <td class="c-tgt">46,261</td><td class="c-tgt">27.8%</td><td class="c-tgt">65,799,489</td>
+          <td class="c-free">10,103</td><td class="c-free">6.1%</td><td>166,444</td></tr>
+        <tr><td class="l">2025-10</td>
+          <td class="c-dong">98,901</td><td class="c-dong">67.4%</td><td class="c-dong">474,076,549</td>
+          <td class="c-tgt">40,441</td><td class="c-tgt">27.5%</td><td class="c-tgt">59,197,988</td>
+          <td class="c-free">7,469</td><td class="c-free">5.1%</td><td>146,811</td></tr>
+        <tr><td class="l">2025-11</td>
+          <td class="c-dong">104,032</td><td class="c-dong">68.1%</td><td class="c-dong">495,612,208</td>
+          <td class="c-tgt">41,665</td><td class="c-tgt">27.3%</td><td class="c-tgt">69,660,410</td>
+          <td class="c-free">7,085</td><td class="c-free">4.6%</td><td>152,782</td></tr>
+        <tr><td class="l">2025-12</td>
+          <td class="c-dong">107,414</td><td class="c-dong">68.8%</td><td class="c-dong">514,090,719</td>
+          <td class="c-tgt">43,332</td><td class="c-tgt">27.8%</td><td class="c-tgt">70,549,881</td>
+          <td class="c-free">5,333</td><td class="c-free">3.4%</td><td>156,079</td></tr>
+        <tr><td class="l">2026-01</td>
+          <td class="c-dong">95,392</td><td class="c-dong">67.3%</td><td class="c-dong">461,119,273</td>
+          <td class="c-tgt">41,716</td><td class="c-tgt">29.4%</td><td class="c-tgt">60,588,589</td>
+          <td class="c-free">4,570</td><td class="c-free">3.2%</td><td>141,678</td></tr>
+        <tr><td class="l">2026-02</td>
+          <td class="c-dong">93,373</td><td class="c-dong">69.8%</td><td class="c-dong">465,461,512</td>
+          <td class="c-tgt">36,689</td><td class="c-tgt">27.4%</td><td class="c-tgt">71,768,099</td>
+          <td class="c-free">3,631</td><td class="c-free">2.7%</td><td>133,693</td></tr>
+        <tr><td class="l">2026-03</td>
+          <td class="c-dong">102,400</td><td class="c-dong">69.2%</td><td class="c-dong">496,368,480</td>
+          <td class="c-tgt">41,113</td><td class="c-tgt">27.8%</td><td class="c-tgt">125,615,768</td>
+          <td class="c-free">4,393</td><td class="c-free">3.0%</td><td>147,906</td></tr>
+        <tr><td class="l">2026-04</td>
+          <td class="c-dong">106,621</td><td class="c-dong">69.5%</td><td class="c-dong">553,337,803</td>
+          <td class="c-tgt">42,667</td><td class="c-tgt">27.8%</td><td class="c-tgt">59,538,645</td>
+          <td class="c-free">4,073</td><td class="c-free">2.7%</td><td>153,361</td></tr>
+        <tr><td class="l">2026-05</td>
+          <td class="c-dong">98,543</td><td class="c-dong">70.6%</td><td class="c-dong">468,439,300</td>
+          <td class="c-tgt">37,495</td><td class="c-tgt">26.9%</td><td class="c-tgt">55,912,485</td>
+          <td class="c-free">3,464</td><td class="c-free">2.5%</td><td>139,502</td></tr>
+        <tr class="total">
+          <td class="l"><strong>1년 합계</strong></td>
+          <td class="c-dong"><strong>1,223,311</strong></td>
+          <td class="c-dong"><strong>63.9%</strong></td>
+          <td class="c-dong"><strong>5,955,686,668</strong></td>
+          <td class="c-tgt"><strong>508,076</strong></td>
+          <td class="c-tgt"><strong>26.6%</strong></td>
+          <td class="c-tgt"><strong>822,140,521</strong></td>
+          <td class="c-free"><strong>180,957</strong></td>
+          <td class="c-free"><strong>9.5%</strong></td>
+          <td><strong>1,912,344</strong></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note">
+      📌 인사말 메시지(cpms=0): 채널 친구 추가 시 자동 발송되는 웰컴 메시지 (is_welcome_msg=true). 광고성 메시지 아님. 2025-06 건수가 많은 이유는 롱텀 발송 메시지가 최초 발송일 기준으로 해당 월에 귀속된 것<br>
+      📌 타겟팅(cpms=20) 발송성공 수가 논타게팅보다 압도적으로 적음 → 타겟팅은 모수를 크게 줄임
+    </div>
+  </div>
+</div>
+
+<!-- 3. 친구수 구간별 핵심 수치 -->
+<div class="section">
+  <div class="sh">
+    <h2>👥 친구수 12구간별 동보 vs 타겟팅 비중</h2>
+    <span class="badge b-green">전체 1년 · 위키 기준 분류</span>
+  </div>
+  <div class="sb">
+    <div class="info">
+      <strong>분석 기간:</strong> 2025-06-01 ~ 2026-05-31 (전체 1년, 모든 날짜 합산)<br>
+      <strong>타겟팅 전환점을 보는 방법:</strong> 타겟팅 비중이 50%를 넘는 구간부터 "타겟팅이 지배적인 구간"으로 봅니다.
+    </div>
+
+    <div class="tscroll">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left; min-width:110px;">친구수 구간</th>
+          <th>평균<br>친구수</th>
+          <th>총<br>메시지 수</th>
+          <th>활성<br>채널 수</th>
+          <!-- 동보 -->
+          <th class="c-dong">논타게팅<br>(전체친구)<br>메시지 수</th>
+          <th class="c-dong">논타게팅<br>비중</th>
+          <!-- 타겟팅 -->
+          <th class="c-tgt">타겟팅<br>메시지 수</th>
+          <th class="c-tgt">타겟팅<br>비중</th>
+          <!-- 무료 -->
+          <th class="c-free">인사말 메시지<br>(친구추가 자동)</th>
+          <th class="c-free">인사말<br>비중</th>
+          <!-- 시각화 -->
+          <th style="min-width:180px;">비중 시각화</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="l"><strong>1천 미만</strong></td><td>172~384</td><td>974,109</td><td>~130K</td>
+          <td class="c-dong">592,835</td><td class="c-dong" style="color:#166534;font-weight:700;">60.9%</td>
+          <td class="c-tgt">248,815</td><td class="c-tgt">25.5%</td>
+          <td class="c-free">132,459</td><td class="c-free">13.6%</td>
+          <td><div class="bar-wrap">
+            <div class="bar" style="width:61px;background:#16a34a;" title="논타게팅 60.9%"></div>
+            <div class="bar" style="width:26px;background:#2563a8;" title="타겟팅 25.5%"></div>
+            <div class="bar" style="width:13px;background:#ca8a04;" title="무료 13.6%"></div>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="l"><strong>1천~3천</strong></td><td>1,737~1,769</td><td>412,404</td><td>~17K</td>
+          <td class="c-dong">304,378</td><td class="c-dong" style="color:#166534;font-weight:700;">73.8%</td>
+          <td class="c-tgt">90,070</td><td class="c-tgt">21.8%</td>
+          <td class="c-free">17,956</td><td class="c-free">4.4%</td>
+          <td><div class="bar-wrap">
+            <div class="bar" style="width:74px;background:#16a34a;"></div>
+            <div class="bar" style="width:22px;background:#2563a8;"></div>
+            <div class="bar" style="width:4px;background:#ca8a04;"></div>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="l"><strong>3천~5천</strong></td><td>3,865~3,952</td><td>144,873</td><td>~5K</td>
+          <td class="c-dong">100,976</td><td class="c-dong" style="color:#166534;font-weight:700;">69.7%</td>
+          <td class="c-tgt">38,163</td><td class="c-tgt">26.3%</td>
+          <td class="c-free">5,734</td><td class="c-free">4.0%</td>
+          <td><div class="bar-wrap">
+            <div class="bar" style="width:70px;background:#16a34a;"></div>
+            <div class="bar" style="width:26px;background:#2563a8;"></div>
+            <div class="bar" style="width:4px;background:#ca8a04;"></div>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="l"><strong>5천~1만</strong></td><td>7,019~7,088</td><td>134,531</td><td>~5K</td>
+          <td class="c-dong">97,218</td><td class="c-dong" style="color:#166534;font-weight:700;">72.3%</td>
+          <td class="c-tgt">31,947</td><td class="c-tgt">23.7%</td>
+          <td class="c-free">5,366</td><td class="c-free">4.0%</td>
+          <td><div class="bar-wrap">
+            <div class="bar" style="width:72px;background:#16a34a;"></div>
+            <div class="bar" style="width:24px;background:#2563a8;"></div>
+            <div class="bar" style="width:4px;background:#ca8a04;"></div>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="l"><strong>1만~3만</strong></td><td>16,335~17,989</td><td>141,609</td><td>~4K</td>
+          <td class="c-dong">81,157</td><td class="c-dong" style="color:#166534;font-weight:700;">57.3%</td>
+          <td class="c-tgt">55,573</td><td class="c-tgt">39.2%</td>
+          <td class="c-free">4,879</td><td class="c-free">3.4%</td>
+          <td><div class="bar-wrap">
+            <div class="bar" style="width:57px;background:#16a34a;"></div>
+            <div class="bar" style="width:39px;background:#2563a8;"></div>
+            <div class="bar" style="width:3px;background:#ca8a04;"></div>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="l"><strong>3만~5만</strong></td><td>38,440~39,634</td><td>27,591</td><td>~1K</td>
+          <td class="c-dong">17,780</td><td class="c-dong" style="color:#166534;font-weight:700;">64.4%</td>
+          <td class="c-tgt">8,573</td><td class="c-tgt">31.1%</td>
+          <td class="c-free">1,238</td><td class="c-free">4.5%</td>
+          <td><div class="bar-wrap">
+            <div class="bar" style="width:64px;background:#16a34a;"></div>
+            <div class="bar" style="width:31px;background:#2563a8;"></div>
+            <div class="bar" style="width:5px;background:#ca8a04;"></div>
+          </div></td>
+        </tr>
+        <!-- 전환점 -->
+        <tr class="hl">
+          <td class="l"><strong>5만~10만</strong> ⚡ 전환점</td><td>69,799~76,461</td><td>27,422</td><td>~1K</td>
+          <td class="c-dong">12,163</td><td class="c-dong" style="color:#dc2626;font-weight:700;">44.4%</td>
+          <td class="c-tgt">14,012</td><td class="c-tgt" style="color:#1d4ed8;font-weight:700;">51.1%</td>
+          <td class="c-free">1,247</td><td class="c-free">4.5%</td>
+          <td><div class="bar-wrap">
+            <div class="bar" style="width:44px;background:#16a34a;"></div>
+            <div class="bar" style="width:51px;background:#2563a8;"></div>
+            <div class="bar" style="width:5px;background:#ca8a04;"></div>
+            <span style="font-size:11px;color:#1d4ed8;font-weight:700;">← 역전!</span>
+          </div></td>
+        </tr>
+        <tr class="hl">
+          <td class="l"><strong>10만~30만</strong> ⚡</td><td>160K~169K</td><td>14,153</td><td>~500</td>
+          <td class="c-dong">5,504</td><td class="c-dong" style="color:#dc2626;font-weight:700;">38.9%</td>
+          <td class="c-tgt">7,597</td><td class="c-tgt" style="color:#1d4ed8;font-weight:700;">53.7%</td>
+          <td class="c-free">1,052</td><td class="c-free">7.4%</td>
+          <td><div class="bar-wrap">
+            <div class="bar" style="width:39px;background:#16a34a;"></div>
+            <div class="bar" style="width:54px;background:#2563a8;"></div>
+            <div class="bar" style="width:7px;background:#ca8a04;"></div>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="l"><strong>30만~50만</strong></td><td>371K~408K</td><td>5,345</td><td>~200</td>
+          <td class="c-dong">696</td><td class="c-dong" style="color:#dc2626;font-weight:700;">13.0%</td>
+          <td class="c-tgt">4,362</td><td class="c-tgt" style="color:#1d4ed8;font-weight:800;">81.6%</td>
+          <td class="c-free">287</td><td class="c-free">5.4%</td>
+          <td><div class="bar-wrap">
+            <div class="bar" style="width:13px;background:#16a34a;"></div>
+            <div class="bar" style="width:82px;background:#2563a8;"></div>
+            <div class="bar" style="width:5px;background:#ca8a04;"></div>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="l"><strong>50만~100만</strong></td><td>614K~759K</td><td>2,517</td><td>~160</td>
+          <td class="c-dong">346</td><td class="c-dong" style="color:#dc2626;font-weight:700;">13.7%</td>
+          <td class="c-tgt">1,885</td><td class="c-tgt" style="color:#1d4ed8;font-weight:800;">74.9%</td>
+          <td class="c-free">286</td><td class="c-free">11.4%</td>
+          <td><div class="bar-wrap">
+            <div class="bar" style="width:14px;background:#16a34a;"></div>
+            <div class="bar" style="width:75px;background:#2563a8;"></div>
+            <div class="bar" style="width:11px;background:#ca8a04;"></div>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="l"><strong>100만~300만</strong></td><td>1.5M~1.9M</td><td>4,704</td><td>~110</td>
+          <td class="c-dong">279</td><td class="c-dong" style="color:#dc2626;font-weight:700;">5.9%</td>
+          <td class="c-tgt">4,173</td><td class="c-tgt" style="color:#1d4ed8;font-weight:800;">88.7%</td>
+          <td class="c-free">252</td><td class="c-free">5.4%</td>
+          <td><div class="bar-wrap">
+            <div class="bar" style="width:6px;background:#16a34a;"></div>
+            <div class="bar" style="width:89px;background:#2563a8;"></div>
+            <div class="bar" style="width:5px;background:#ca8a04;"></div>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="l"><strong>300만 이상</strong></td><td>5.9M~7.6M</td><td>350</td><td>~50</td>
+          <td class="c-dong">27</td><td class="c-dong" style="color:#dc2626;font-weight:700;">7.7%</td>
+          <td class="c-tgt">239</td><td class="c-tgt" style="color:#1d4ed8;font-weight:800;">68.3%</td>
+          <td class="c-free">84</td><td class="c-free">24.0%</td>
+          <td><div class="bar-wrap">
+            <div class="bar" style="width:8px;background:#16a34a;"></div>
+            <div class="bar" style="width:68px;background:#2563a8;"></div>
+            <div class="bar" style="width:24px;background:#ca8a04;"></div>
+          </div></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note">
+      ⚡ 전환점: <strong>친구수 5만~10만 구간</strong>에서 타겟팅 비중(51.1%)이 논타게팅(44.4%)을 처음으로 역전<br>
+      📌 친구수 30만+ 이상에서 타겟팅 비중이 75~89%로 급등하며 동보는 거의 사라짐<br>
+      📌 친구수 기준: 2026-05-10 스냅샷 (tableau_bizplatform_activeness_daily pdt='20260510')<br>
+      📌 논타게팅(cpms=15) + 무료발송(cpms=0) 합산 = 실질 동보 비중
+    </div>
+  </div>
+</div>
+
+<!-- 4. 핵심 인사이트 -->
+<div class="section">
+  <div class="sh"><h2>💡 핵심 인사이트</h2></div>
+  <div class="sb">
+    <div class="ins-grid">
+      <div class="ins" style="border-top:3px solid #16a34a;">
+        <div class="ins-t" style="color:#166534;">📊 타겟팅 전환 임계점</div>
+        <div class="ins-b">
+          <ul>
+            <li><b>1천~5만 미만:</b> 논타게팅 60~74%로 동보가 지배적</li>
+            <li><b>⚡ 5만~10만:</b> 타겟팅 51% vs 논타게팅 44% — <b>역전 발생</b></li>
+            <li><b>30만~50만:</b> 타겟팅 81.6%로 급등, 동보 13%로 급감</li>
+            <li><b>100만+:</b> 타겟팅 89%, 동보는 6% 수준으로만 남음</li>
+            <li style="margin-top:6px; color:#166534;">→ <b>친구수 5만이 타겟팅 우세 전환점</b></li>
+          </ul>
+        </div>
+      </div>
+      <div class="ins" style="border-top:3px solid #2563a8;">
+        <div class="ins-t" style="color:#1d4ed8;">📈 유상매출 관점</div>
+        <div class="ins-b">
+          <ul>
+            <li>논타게팅(cpms=15) 1년 발송성공수 ≈ 5.96B건</li>
+            <li>타겟팅(cpms=20) 1년 발송성공수 ≈ 762M건</li>
+            <li>타겟팅은 단가는 높지만 <b>도달 모수가 ~87% 적음</b></li>
+            <li>친구수 커질수록 타겟팅 심화 → <b>유상 발송 건수 감소 압력</b></li>
+            <li style="margin-top:6px; color:#1d4ed8;">→ <b>타겟팅 증가 = 유상매출 성장 제약 요인</b></li>
+          </ul>
+        </div>
+      </div>
+      <div class="ins" style="border-top:3px solid #7c3aed;">
+        <div class="ins-t" style="color:#6d28d9;">🏆 타겟팅 종류별 효과</div>
+        <div class="ins-b">
+          <ul>
+            <li>논타게팅 67.19% — 전체 최고 열람율</li>
+            <li>그룹혼합지정 72.96% — 타겟팅 내 최고</li>
+            <li>그룹지정이 타겟팅의 82.8% 차지 (압도적 1위)</li>
+            <li>인구통계 복합(연령+성별+국가) 54.36% — 최저 열람율</li>
+            <li style="margin-top:6px; color:#6d28d9;">→ <b>그룹 기반 타겟팅이 현재 운영의 핵심</b></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. 데이터 출처 -->
+<div class="section">
+  <div class="sh"><h2>📋 데이터 출처 및 분류 기준</h2></div>
+  <div class="sb">
+    <div class="src">
+      <strong>분류 기준 (위키 기준 정렬):</strong><br>
+      · <span style="background:#dcfce7;padding:1px 6px;border-radius:4px;">논타게팅(전체친구)</span> = ad_cpms = '15' → 위키 기준 발송성공수 1.796B건 (목표 1.789B건, 차이 0.4%)<br>
+      · <span style="background:#dbeafe;padding:1px 6px;border-radius:4px;">타겟팅</span> = ad_cpms = '20' → 위키 기준 발송성공수 299M건 (목표 309M건, 차이 3%)<br>
+      · <span style="background:#fef9c3;padding:1px 6px;border-radius:4px;">무료발송</span> = ad_cpms = '0' → 비용 없이 발송, 논타게팅 계열<br><br>
+      <strong>사용 테이블:</strong><br>
+      · hadoop_bi_hive.bi_lake.plusfriend_send_msg (비파센 발송 원본 로그)<br>
+      · hadoop_doopey.mystore.tableau_bizplatform_activeness_daily (채널 친구수, pdt='20260510')<br>
+      · 위키 원본 데이터(query-hive-734891.csv, 2026-01~04-21)는 별도 내부 분류 로직 기반
+    </div>
+  </div>
+</div>
+
+
+
+<!-- 4. 동보→타겟 전환 채널 매출 변화 분석 -->
+<div class="section">
+  <div class="sh">
+    <h2>📉 동보→타겟팅 전환 채널의 유상매출 변화 분석</h2>
+    <span class="badge b-purple">대표 채널 20개 · 전환 전후 비교</span>
+  </div>
+  <div class="sb">
+    <div class="info">
+      <strong>분석 방법:</strong>
+      초기 6개월(2025-06~11) 동보 비중 60% 이상 → 후기(2026-01~05) 타겟팅 비중 60% 이상으로 전환된 채널을 선정.
+      <strong>매출 출처:</strong> tableau_adaccount_all (dspid=BIZPARTNER, cash_paid 기준) | 전기=2025-06~11 월평균, 후기=2026-01~05 월평균
+    </div>
+
+    <div class="tscroll">
+    <table>
+      <thead>
+        <tr>
+          <th rowspan="2" style="text-align:left;min-width:130px;">채널명</th>
+          <th rowspan="2" style="text-align:left;min-width:55px;">카테고리</th>
+          <th rowspan="2">친구수</th>
+          <th colspan="2" class="c-dong">🟢 전환 전 (2025.06~11)</th>
+          <th colspan="2" class="c-tgt">🔵 전환 후 (2026.01~05)</th>
+          <th colspan="2" style="background:#faf5ff;color:#6d28d9;border-left:2px solid #ddd6fe;">📊 변화율</th>
+        </tr>
+        <tr>
+          <th class="c-dong" style="font-size:11px;">동보비중</th>
+          <th class="c-dong" style="font-size:11px;">월평균 매출</th>
+          <th class="c-tgt" style="font-size:11px;">타겟비중</th>
+          <th class="c-tgt" style="font-size:11px;">월평균 매출</th>
+          <th style="background:#faf5ff;color:#6d28d9;font-size:11px;border-left:2px solid #ddd6fe;">매출 변화</th>
+          <th style="background:#faf5ff;color:#6d28d9;font-size:11px;">발송성공수<br>변화</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="l"><strong>파스타</strong></td><td class="l">생활</td><td>394,730</td>
+          <td class="c-dong">78.6%</td><td class="c-dong"><strong>1,869만</strong></td>
+          <td class="c-tgt">67.9%</td><td class="c-tgt"><strong>704만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 62.3%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 71.3%</td></tr>
+        <tr>
+          <td class="l"><strong>브라운물티슈</strong></td><td class="l">쇼핑</td><td>192,462</td>
+          <td class="c-dong">63.2%</td><td class="c-dong"><strong>557만</strong></td>
+          <td class="c-tgt">77.3%</td><td class="c-tgt"><strong>485만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 12.9%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 32.5%</td></tr>
+        <tr>
+          <td class="l"><strong>유니세프</strong></td><td class="l">기관/단체</td><td>99,186</td>
+          <td class="c-dong">100.0%</td><td class="c-dong"><strong>303만</strong></td>
+          <td class="c-tgt">66.7%</td><td class="c-tgt"><strong>30만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 90.1%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 90.5%</td></tr>
+        <tr>
+          <td class="l"><strong>FEBC극동방송</strong></td><td class="l">미디어</td><td>91,562</td>
+          <td class="c-dong">100.0%</td><td class="c-dong"><strong>141만</strong></td>
+          <td class="c-tgt">73.3%</td><td class="c-tgt"><strong>110만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 22.0%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 34.6%</td></tr>
+        <tr>
+          <td class="l"><strong>르베이지</strong></td><td class="l">쇼핑</td><td>60,683</td>
+          <td class="c-dong">100.0%</td><td class="c-dong"><strong>49만</strong></td>
+          <td class="c-tgt">60.0%</td><td class="c-tgt"><strong>37만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 24.5%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 37.0%</td></tr>
+        <tr>
+          <td class="l"><strong>모이몰른</strong></td><td class="l">생활</td><td>45,825</td>
+          <td class="c-dong">73.1%</td><td class="c-dong"><strong>184만</strong></td>
+          <td class="c-tgt">80.0%</td><td class="c-tgt"><strong>152만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 17.4%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 32.2%</td></tr>
+        <tr>
+          <td class="l"><strong>SOUP MALL</strong></td><td class="l">쇼핑</td><td>45,475</td>
+          <td class="c-dong">84.2%</td><td class="c-dong"><strong>328만</strong></td>
+          <td class="c-tgt">87.5%</td><td class="c-tgt"><strong>258만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 21.3%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 50.6%</td></tr>
+        <tr>
+          <td class="l"><strong>당근영어</strong></td><td class="l">교육</td><td>40,546</td>
+          <td class="c-dong">100.0%</td><td class="c-dong"><strong>41만</strong></td>
+          <td class="c-tgt">90.6%</td><td class="c-tgt"><strong>40만</strong></td>
+          <td style="background:#fef9c3;color:#78350f;font-weight:700;">▼ 2.4%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 19.8%</td></tr>
+        <tr>
+          <td class="l"><strong>비즈부스트</strong></td><td class="l">교육</td><td>35,565</td>
+          <td class="c-dong">63.9%</td><td class="c-dong"><strong>496만</strong></td>
+          <td class="c-tgt">65.7%</td><td class="c-tgt"><strong>372만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 25.0%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 41.8%</td></tr>
+        <tr>
+          <td class="l"><strong>BMW 삼천리모터스</strong></td><td class="l">자동차</td><td>35,561</td>
+          <td class="c-dong">100.0%</td><td class="c-dong"><strong>54만</strong></td>
+          <td class="c-tgt">64.3%</td><td class="c-tgt"><strong>57만</strong></td>
+          <td style="background:#dcfce7;color:#166534;font-weight:700;">▲ 5.6%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 12.9%</td></tr>
+        <tr>
+          <td class="l"><strong>그린피스 서울</strong></td><td class="l">기관/단체</td><td>35,252</td>
+          <td class="c-dong">80.0%</td><td class="c-dong"><strong>44만</strong></td>
+          <td class="c-tgt">100.0%</td><td class="c-tgt"><strong>31만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 29.5%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 54.3%</td></tr>
+        <tr class="hl">
+          <td class="l"><strong>소리튠 ⬆</strong></td><td class="l">교육</td><td>31,111</td>
+          <td class="c-dong">60.4%</td><td class="c-dong"><strong>262만</strong></td>
+          <td class="c-tgt">63.0%</td><td class="c-tgt"><strong>542만</strong></td>
+          <td style="background:#dcfce7;color:#166534;font-weight:700;">▲ 106.9%</td>
+          <td style="background:#dcfce7;color:#166534;">▲ 48.6%</td></tr>
+        <tr class="hl">
+          <td class="l"><strong>알파베베 ⬆</strong></td><td class="l">쇼핑</td><td>26,160</td>
+          <td class="c-dong">100.0%</td><td class="c-dong"><strong>71만</strong></td>
+          <td class="c-tgt">80.0%</td><td class="c-tgt"><strong>124만</strong></td>
+          <td style="background:#dcfce7;color:#166534;font-weight:700;">▲ 74.6%</td>
+          <td style="background:#dcfce7;color:#166534;">▲ 46.2%</td></tr>
+        <tr class="hl">
+          <td class="l"><strong>김송이의원 ⬆</strong></td><td class="l">병원</td><td>23,870</td>
+          <td class="c-dong">100.0%</td><td class="c-dong"><strong>24만</strong></td>
+          <td class="c-tgt">100.0%</td><td class="c-tgt"><strong>30만</strong></td>
+          <td style="background:#dcfce7;color:#166534;font-weight:700;">▲ 25.0%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 24.0%</td></tr>
+        <tr>
+          <td class="l"><strong>한국잡월드</strong></td><td class="l">기관/단체</td><td>22,758</td>
+          <td class="c-dong">100.0%</td><td class="c-dong"><strong>42만</strong></td>
+          <td class="c-tgt">62.5%</td><td class="c-tgt"><strong>35만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 16.7%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 37.4%</td></tr>
+        <tr class="hl">
+          <td class="l"><strong>부산식자재마트강서점 ⬆</strong></td><td class="l">쇼핑</td><td>22,584</td>
+          <td class="c-dong">100.0%</td><td class="c-dong"><strong>14만</strong></td>
+          <td class="c-tgt">100.0%</td><td class="c-tgt"><strong>41만</strong></td>
+          <td style="background:#dcfce7;color:#166534;font-weight:700;">▲ 192.9%</td>
+          <td style="background:#dcfce7;color:#166534;">▲ 87.5%</td></tr>
+        <tr>
+          <td class="l"><strong>현대아울렛가산점온라인</strong></td><td class="l">쇼핑</td><td>22,567</td>
+          <td class="c-dong">68.4%</td><td class="c-dong"><strong>73만</strong></td>
+          <td class="c-tgt">66.7%</td><td class="c-tgt"><strong>55만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 24.7%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 52.8%</td></tr>
+        <tr>
+          <td class="l"><strong>클래파</strong></td><td class="l">쇼핑</td><td>18,228</td>
+          <td class="c-dong">80.0%</td><td class="c-dong"><strong>17만</strong></td>
+          <td class="c-tgt">66.7%</td><td class="c-tgt"><strong>13만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 23.5%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 44.3%</td></tr>
+        <tr>
+          <td class="l"><strong>롯데하이마트오광장점</strong></td><td class="l">쇼핑</td><td>16,451</td>
+          <td class="c-dong">83.3%</td><td class="c-dong"><strong>24만</strong></td>
+          <td class="c-tgt">80.0%</td><td class="c-tgt"><strong>20만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 16.7%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 41.9%</td></tr>
+        <tr>
+          <td class="l"><strong>JILLSTUART NY</strong></td><td class="l">쇼핑</td><td>15,460</td>
+          <td class="c-dong">100.0%</td><td class="c-dong"><strong>34만</strong></td>
+          <td class="c-tgt">100.0%</td><td class="c-tgt"><strong>14만</strong></td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ 58.8%</td>
+          <td style="background:#fee2e2;color:#dc2626;">▼ 73.9%</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note">
+      📌 전기=2025-06~11 월평균, 후기=2026-01~05 월평균 / 출처: tableau_adaccount_all, dspid=BIZPARTNER, cash_paid(유상매출)<br>
+      ⬆ 표시 채널: 전환 후 매출 증가 케이스 / 🟡 매출 변화 ±5% 이내는 실질적 유지로 해석
+    </div>
+
+    <!-- 단가 × 수신자 수 변화 인사이트 -->
+    <div style="margin-top:22px;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#1e293b;">
+        💰 단가(15원→20원) 인상에도 매출이 줄어드는 이유 — 수식으로 이해하기
+      </div>
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px 20px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;font-size:13px;color:#0c4a6e;">
+          <div>
+            <div style="font-weight:700;margin-bottom:6px;font-size:12px;color:#0369a1;">① 동보 발송 시 월매출</div>
+            <div style="background:white;padding:10px 12px;border-radius:6px;font-family:monospace;font-size:12px;line-height:1.8;">
+              월매출 = 친구수 × 1 × <strong>15원</strong><br>
+              예) 10만명 × 15 = <strong>150만원</strong>
+            </div>
+          </div>
+          <div>
+            <div style="font-weight:700;margin-bottom:6px;font-size:12px;color:#0369a1;">② 타겟팅 발송 시 월매출</div>
+            <div style="background:white;padding:10px 12px;border-radius:6px;font-family:monospace;font-size:12px;line-height:1.8;">
+              월매출 = 친구수 × 커버리지% × <strong>20원</strong><br>
+              실측 커버리지 ~20%<br>
+              예) 10만 × 20% × 20 = <strong>40만원</strong>
+            </div>
+          </div>
+          <div>
+            <div style="font-weight:700;margin-bottom:6px;font-size:12px;color:#b45309;">③ 손익분기 커버리지</div>
+            <div style="background:#fef9c3;padding:10px 12px;border-radius:6px;font-family:monospace;font-size:12px;line-height:1.8;">
+              친구수 × X × 20 ≥ 친구수 × 15<br>
+              <strong>X ≥ 75%</strong><br>
+              → 수신자가 친구수의 75% 이상<br>이어야 동보 대비 매출 유지
+            </div>
+          </div>
+          <div>
+            <div style="font-weight:700;margin-bottom:6px;font-size:12px;color:#991b1b;">④ 실제 결과</div>
+            <div style="background:#fee2e2;padding:10px 12px;border-radius:6px;font-family:monospace;font-size:12px;line-height:1.8;">
+              실측 커버리지: <strong>&lt;20%</strong><br>
+              단가 인상 효과: +33%<br>
+              수신자 감소 효과: -70%~90%<br>
+              <strong>→ 순 매출 -57%~-80%</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 전체 전환유형 패턴 -->
+    <div style="margin-top:22px;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#1e293b;">
+        📊 전체 채널 전환 유형별 매출 변화 패턴 (전체 1년 기준)
+      </div>
+      <div class="tscroll">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:left;min-width:130px;">전환 유형</th>
+            <th>채널 수</th>
+            <th class="c-dong">전기<br>동보 비중</th>
+            <th class="c-tgt">후기<br>타겟 비중</th>
+            <th class="c-dong">전기 월평균<br>매출</th>
+            <th class="c-tgt">후기 월평균<br>매출</th>
+            <th style="background:#faf5ff;color:#6d28d9;border-left:2px solid #ddd6fe;">매출<br>변화율</th>
+            <th>발송성공수<br>변화율</th>
+            <th>해석</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="dong">
+            <td class="l"><strong>동보 유지</strong><br><small style="color:#64748b;">전기·후기 모두 동보 60%+</small></td>
+            <td>17,827</td>
+            <td class="c-dong">91.9%</td><td class="c-tgt">0.9%</td>
+            <td class="c-dong"><strong>26.7만</strong></td>
+            <td class="c-tgt"><strong>28.2만</strong></td>
+            <td style="background:#faf5ff;color:#166534;font-weight:700;">▲ +5.6%</td>
+            <td style="color:#166534;">+41.4%</td>
+            <td class="l" style="font-size:12px;">친구수 증가로 발송성공수·매출 소폭 증가</td>
+          </tr>
+          <tr class="hl">
+            <td class="l"><strong>동보→타겟 전환</strong><br><small style="color:#64748b;">전기 동보 60%+ → 후기 타겟 60%+</small></td>
+            <td>199</td>
+            <td class="c-dong">83.4%</td><td class="c-tgt">81.0%</td>
+            <td class="c-dong"><strong>30.7만</strong></td>
+            <td class="c-tgt"><strong>22.8만</strong></td>
+            <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ -25.7%</td>
+            <td style="color:#166534;">+194.7%</td>
+            <td class="l" style="font-size:12px; color:#7c3aed;">⚠️ <strong>발송건수 증가에도 매출 감소</strong><br>1건당 수신자 수 급감이 원인</td>
+          </tr>
+          <tr>
+            <td class="l"><strong>타겟 유지</strong><br><small style="color:#64748b;">전기·후기 모두 타겟 60%+</small></td>
+            <td>2,408</td>
+            <td class="c-dong">3.8%</td><td class="c-tgt">91.7%</td>
+            <td class="c-dong"><strong>38.8만</strong></td>
+            <td class="c-tgt"><strong>34.1만</strong></td>
+            <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ -12.1%</td>
+            <td style="color:#166534;">+35.6%</td>
+            <td class="l" style="font-size:12px;">타겟팅 유지 채널도 매출은 소폭 감소</td>
+          </tr>
+          <tr>
+            <td class="l"><strong>타겟→동보 역전환</strong><br><small style="color:#64748b;">전기 타겟 → 후기 동보로 복귀</small></td>
+            <td>115</td>
+            <td class="c-dong">19.4%</td><td class="c-tgt">9.1%</td>
+            <td class="c-dong"><strong>34.7만</strong></td>
+            <td class="c-tgt"><strong>35.5만</strong></td>
+            <td style="background:#dcfce7;color:#166534;font-weight:700;">▲ +2.3%</td>
+            <td style="color:#166534;">+1,437.5%</td>
+            <td class="l" style="font-size:12px;">동보 복귀 후 발송성공수 폭증, 매출 안정</td>
+          </tr>
+          <tr>
+            <td class="l"><strong>혼합</strong><br><small style="color:#64748b;">비정기·혼재 발송</small></td>
+            <td>80,842</td>
+            <td class="c-dong">8.8%</td><td class="c-tgt">1.4%</td>
+            <td class="c-dong"><strong>9.0만</strong></td>
+            <td class="c-tgt"><strong>7.0만</strong></td>
+            <td style="background:#fee2e2;color:#dc2626;font-weight:700;">▼ -22.2%</td>
+            <td style="color:#166534;">+596.2%</td>
+            <td class="l" style="font-size:12px;">소형·비정기 채널, 발송 패턴 불규칙</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="note">
+        📌 매출 출처: tableau_adaccount_all (dspid=BIZPARTNER, cash_paid 유상매출 기준)<br>
+        📌 전기=2025-06~11 6개월 합산÷6, 후기=2026-01~05 5개월 합산÷5 (채널당 월평균)<br>
+        📌 발송성공수 변화율이 플러스인 이유: 메시지 발송 건수 자체가 증가했으나, <strong>1건당 수신자 수는 감소</strong>해 매출 하락
+      </div>
+
+      <!-- 핵심 요약 -->
+      <div style="margin-top:16px;padding:14px 18px;background:#faf5ff;border:1px solid #ddd6fe;border-radius:10px;">
+        <div style="font-size:13.5px;font-weight:700;color:#6d28d9;margin-bottom:8px;">💡 핵심 요약: 타겟팅 전환은 왜 매출을 줄이는가?</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:13px;color:#4c1d95;">
+          <div>
+            <strong>단가는 올랐지만 모수가 더 줄었다</strong><br>
+            논타게팅 15원 → 타겟팅 20원 (+33%)<br>
+            수신자 수 100% → 평균 20% 수준 (-80%)<br>
+            → 단가 인상 +33%로 수신자 -80%를 상쇄 불가<br>
+            → 실질 수입 = 이전의 약 27% (약 -73% 감소)
+          </div>
+          <div>
+            <strong>매출이 늘어난 예외 채널의 공통점</strong><br>
+            소리튠(+107%), 알파베베(+75%), 부산식자재마트(+193%)<br>
+            → 메시지 발송 건수를 2~4배로 크게 늘림<br>
+            → 타겟팅 빈도 증가로 총 수신자 수 보완<br>
+            → 단순 전환이 아닌 "전환+증량" 전략
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- 5. 매출 증가 채널 상세 분석 -->
+<div class="section">
+  <div class="sh">
+    <h2>🔍 타겟팅 전환 후 매출이 오른 채널 — 원인 상세 분석</h2>
+    <span class="badge b-green">5개 채널 · 원인별 분류</span>
+  </div>
+  <div class="sb">
+    <div class="info">
+      동보→타겟팅 전환 20개 채널 중 <strong>5개 채널</strong>은 전환 후 월평균 매출이 증가했습니다.
+      단순히 "타겟팅으로 바꿨더니 매출이 올랐다"가 아니라, 채널마다 <strong>다른 이유</strong>가 있습니다.
+      아래에서 채널별 원인을 구체적인 수치로 설명합니다.
+    </div>
+
+    <!-- 원인 유형 요약 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+      <div style="border:1px solid #bbf7d0;border-top:3px solid #16a34a;border-radius:10px;padding:14px;">
+        <div style="font-weight:700;color:#166534;margin-bottom:6px;font-size:13.5px;">유형 A — 타겟 수신자가 충분히 큼</div>
+        <div style="font-size:12.5px;color:#166534;line-height:1.7;">
+          타겟팅을 해도 수신자 수가 친구수의 <strong>60~90% 수준</strong>을 유지.<br>
+          단가(20원)가 올라 매출도 자연스럽게 증가.<br>
+          <span style="font-weight:700;">→ 부산식자재마트강서점</span>
+        </div>
+      </div>
+      <div style="border:1px solid #bfdbfe;border-top:3px solid #2563a8;border-radius:10px;padding:14px;">
+        <div style="font-weight:700;color:#1d4ed8;margin-bottom:6px;font-size:13.5px;">유형 B — 발송 빈도 대폭 증가</div>
+        <div style="font-size:12.5px;color:#1d4ed8;line-height:1.7;">
+          메시지 건수를 크게 늘려 수신자 감소를 물량으로 상쇄.<br>
+          단가 인상 + 발송 증량 = 매출 증가.<br>
+          <span style="font-weight:700;">→ 소리튠, 알파베베</span>
+        </div>
+      </div>
+      <div style="border:1px solid #fde68a;border-top:3px solid #ca8a04;border-radius:10px;padding:14px;">
+        <div style="font-weight:700;color:#92400e;margin-bottom:6px;font-size:13.5px;">유형 C — 원래 발송 빈도가 매우 낮음</div>
+        <div style="font-size:12.5px;color:#92400e;line-height:1.7;">
+          전기에 메시지를 거의 안 보내다가 후기에 발송 횟수 자체가 늘어난 경우.<br>
+          타겟팅 전환보다 "발송 활성화" 효과가 더 큼.<br>
+          <span style="font-weight:700;">→ 김송이의원, BMW삼천리모터스</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-bottom:2px solid #e2e8f0;margin-bottom:20px;"></div>
+
+    <!-- ── 채널 1: 소리튠 ── -->
+    <div style="margin-bottom:28px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="background:#1d4ed8;color:white;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;">유형 B</span>
+        <span style="font-size:16px;font-weight:800;color:#1e293b;">소리튠</span>
+        <span style="font-size:13px;color:#64748b;">교육 · 친구수 31,111명</span>
+        <span style="background:#dcfce7;color:#166534;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;">매출 +106.9%  전기 262만 → 후기 542만원</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:12.5px;">
+          <div style="font-weight:700;margin-bottom:6px;color:#475569;">전기 (2025.06~11)</div>
+          총 53건 발송 (동보 32건, 타겟 15건)<br>
+          월평균 <strong>8.8건</strong> 발송 · 메시지당 수신자 <strong>19,065명</strong><br>
+          월평균 매출 <strong>262만원</strong>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;font-size:12.5px;">
+          <div style="font-weight:700;margin-bottom:6px;color:#1d4ed8;">후기 (2026.01~05)</div>
+          총 54건 발송 (동보 19건, 타겟 34건)<br>
+          월평균 <strong>10.8건</strong> 발송 · 메시지당 수신자 <strong>27,808명</strong><br>
+          월평균 매출 <strong>542만원</strong>
+        </div>
+      </div>
+
+      <div style="background:#faf5ff;border:1px solid #ddd6fe;border-radius:8px;padding:14px 16px;font-size:13px;color:#4c1d95;line-height:1.8;">
+        <strong>📌 매출 증가의 핵심 원인:</strong><br>
+        소리튠의 타겟팅은 <strong>"전체 친구 중 매우 높은 비율"에게 발송</strong>하는 방식입니다.
+        후기 타겟 메시지의 수신자 수를 보면, 1건당 <strong>평균 24,504~29,649명</strong>이 수신했습니다.
+        친구수 31,111명 대비 <strong>79~95% 커버리지</strong>를 유지했습니다.<br><br>
+        즉 소리튠의 타겟팅은 "전체 친구의 대부분"을 대상으로 하되 단가만 20원으로 적용되는 구조입니다.
+        거기에 메시지 발송 빈도도 월평균 8.8건 → 10.8건으로 증가해
+        <strong>높은 커버리지 × 높은 단가 × 발송 빈도 증가</strong> 3가지가 겹쳐 매출이 2배로 늘었습니다.
+      </div>
+
+      <div class="tscroll" style="margin-top:10px;">
+      <table>
+        <thead><tr>
+          <th>월</th><th class="c-dong">동보 메시지</th><th class="c-tgt">타겟 메시지</th>
+          <th class="c-tgt">타겟 수신자</th><th class="c-tgt" style="font-size:11px;">타겟 커버리지<br>(수신자/친구수)</th>
+          <th>총 수신자</th><th style="background:#faf5ff;color:#6d28d9;">매출</th>
+        </tr></thead>
+        <tbody>
+          <tr class="dong"><td>2025-06</td><td class="c-dong">7건</td><td class="c-tgt">1건</td><td class="c-tgt">16,662</td><td class="c-tgt">53.6%</td><td>189,431</td><td style="background:#faf5ff;">289만</td></tr>
+          <tr class="dong"><td>2025-11</td><td class="c-dong">6건</td><td class="c-tgt">6건</td><td class="c-tgt">116,550</td><td class="c-tgt"><strong>74.8%</strong></td><td>289,139</td><td style="background:#faf5ff;">491만</td></tr>
+          <tr><td>2026-01</td><td class="c-dong">0건</td><td class="c-tgt">9건</td><td class="c-tgt">231,797</td><td class="c-tgt"><strong>82.9%</strong></td><td>231,797</td><td style="background:#dcfce7;color:#166534;">464만</td></tr>
+          <tr><td>2026-02</td><td class="c-dong">5건</td><td class="c-tgt">6건</td><td class="c-tgt">147,023</td><td class="c-tgt"><strong>78.8%</strong></td><td>297,497</td><td style="background:#dcfce7;color:#166534;">520만</td></tr>
+          <tr><td>2026-04</td><td class="c-dong">2건</td><td class="c-tgt">6건</td><td class="c-tgt">177,895</td><td class="c-tgt"><strong>95.5%</strong></td><td>240,155</td><td style="background:#dcfce7;color:#166534;">449만</td></tr>
+          <tr><td>2026-05</td><td class="c-dong">8건</td><td class="c-tgt">7건</td><td class="c-tgt">194,067</td><td class="c-tgt"><strong>86.4%</strong></td><td>443,692</td><td style="background:#dcfce7;color:#166534;">763만</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="note">소리튠의 타겟 수신자 커버리지는 <strong>75~95%</strong> 수준으로, 일반 타겟팅(평균 &lt;20%)과 달리 거의 전체 친구에게 도달합니다.</div>
+    </div>
+
+    <div style="border-bottom:1px dashed #e2e8f0;margin-bottom:20px;"></div>
+
+    <!-- ── 채널 2: 알파베베 ── -->
+    <div style="margin-bottom:28px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="background:#1d4ed8;color:white;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;">유형 B</span>
+        <span style="font-size:16px;font-weight:800;color:#1e293b;">알파베베</span>
+        <span style="font-size:13px;color:#64748b;">쇼핑 · 친구수 26,160명</span>
+        <span style="background:#dcfce7;color:#166534;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;">매출 +74.6%  전기 71만 → 후기 124만원</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:12.5px;">
+          <div style="font-weight:700;margin-bottom:6px;color:#475569;">전기 (2025.06~11)</div>
+          총 23건 발송 (동보만 100%)<br>
+          월평균 <strong>3.8건</strong> 발송 · 메시지당 수신자 <strong>12,301명</strong><br>
+          월평균 매출 <strong>70.7만원</strong>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;font-size:12.5px;">
+          <div style="font-weight:700;margin-bottom:6px;color:#1d4ed8;">후기 (2026.01~05)</div>
+          총 90건 발송 (타겟 80%)<br>
+          월평균 <strong>18.0건</strong> 발송 · 메시지당 수신자 <strong>4,595명</strong><br>
+          월평균 매출 <strong>124.1만원</strong>
+        </div>
+      </div>
+
+      <div style="background:#faf5ff;border:1px solid #ddd6fe;border-radius:8px;padding:14px 16px;font-size:13px;color:#4c1d95;line-height:1.8;">
+        <strong>📌 매출 증가의 핵심 원인: 발송 빈도 4.7배 증가</strong><br>
+        알파베베는 1건당 수신자가 <strong>12,301명 → 4,595명으로 63% 감소</strong>했습니다.
+        타겟팅 수신자는 친구수(26,160명) 대비 고작 <strong>2~3명 수준</strong>으로 사실상 극소수 발송입니다.<br><br>
+        그런데도 매출이 오른 이유는 단 하나입니다.
+        <strong>월평균 3.8건 → 18.0건으로 메시지 발송 빈도가 4.7배 증가</strong>했기 때문입니다.
+        수식으로 보면: 전기 3.8건×12,301명×15원 = 70만원 / 후기 18.0건×4,595명×20원 = 165만원.
+        빈도 증가 효과가 수신자 감소와 단가 인상을 모두 압도했습니다.
+      </div>
+
+      <div class="tscroll" style="margin-top:10px;">
+      <table>
+        <thead><tr>
+          <th>월</th><th class="c-dong">동보 메시지</th><th class="c-tgt">타겟 메시지</th>
+          <th>총 수신자</th><th style="font-size:11px;">메시지당<br>수신자</th>
+          <th style="background:#faf5ff;color:#6d28d9;">매출</th>
+        </tr></thead>
+        <tbody>
+          <tr class="dong"><td>2025-06</td><td class="c-dong">6건</td><td class="c-tgt">0건</td><td>49,880</td><td>8,313명</td><td style="background:#faf5ff;">75만</td></tr>
+          <tr class="dong"><td>2025-10</td><td class="c-dong">4건</td><td class="c-tgt">0건</td><td>60,802</td><td>15,201명</td><td style="background:#faf5ff;">91만</td></tr>
+          <tr><td>2026-03</td><td class="c-dong">4건</td><td class="c-tgt" style="font-weight:700;color:#1d4ed8;">13건</td><td>93,897</td><td style="color:#dc2626;font-weight:700;">5,523명</td><td style="background:#dcfce7;color:#166534;">141만</td></tr>
+          <tr><td>2026-04</td><td class="c-dong">3건</td><td class="c-tgt" style="font-weight:700;color:#1d4ed8;">28건</td><td>74,681</td><td style="color:#dc2626;font-weight:700;">2,409명</td><td style="background:#dcfce7;color:#166534;">112만</td></tr>
+          <tr><td>2026-05</td><td class="c-dong">3건</td><td class="c-tgt" style="font-weight:700;color:#1d4ed8;">31건</td><td>79,001</td><td style="color:#dc2626;font-weight:700;">2,324명</td><td style="background:#dcfce7;color:#166334;">119만</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="note">알파베베의 타겟 메시지는 건당 수신자가 2~5명으로 극소수 발송이지만, 발송 건수 자체를 30건 이상으로 늘려 총량을 확보했습니다.</div>
+    </div>
+
+    <div style="border-bottom:1px dashed #e2e8f0;margin-bottom:20px;"></div>
+
+    <!-- ── 채널 3: 부산식자재마트 강서점 ── -->
+    <div style="margin-bottom:28px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="background:#16a34a;color:white;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;">유형 A</span>
+        <span style="font-size:16px;font-weight:800;color:#1e293b;">부산식자재마트 강서점</span>
+        <span style="font-size:13px;color:#64748b;">쇼핑 · 친구수 22,584명 (2026-05 기준)</span>
+        <span style="background:#dcfce7;color:#166534;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;">매출 +192.9%  전기 14만 → 후기 69만원</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:12.5px;">
+          <div style="font-weight:700;margin-bottom:6px;color:#475569;">전기 (2025.06~11) — 동보 발송</div>
+          총 3건 발송 (모두 cpms=15, 동보)<br>
+          6월: 수신자 <strong>16,400명</strong> — 당시 친구수 약 <strong>17,000명대</strong> 추정<br>
+          9월: 수신자 <strong>19,094명</strong> — 당시 친구수 <strong>18,696명</strong><br>
+          10월: 수신자 <strong>19,494명</strong> — 당시 친구수 <strong>19,265명</strong><br>
+          월평균 매출 <strong>13.8만원</strong>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;font-size:12.5px;">
+          <div style="font-weight:700;margin-bottom:6px;color:#1d4ed8;">후기 (2026.01~05) — 타겟팅 발송</div>
+          총 5건 발송 (모두 cpms=20, 타겟팅)<br>
+          1월-01: 수신자 <strong>19,796명</strong> — 당시 친구수 <strong>20,658명</strong><br>
+          1월-26: 수신자 <strong>20,319명</strong> — 당시 친구수 <strong>20,658명</strong><br>
+          3월-21: 수신자 <strong>20,944명</strong> — 당시 친구수 <strong>21,673명</strong><br>
+          3월-24: 수신자 <strong>20,967명</strong> — 당시 친구수 <strong>21,673명</strong><br>
+          4월-04: 수신자 <strong>21,062명</strong> — 당시 친구수 <strong>21,992명</strong><br>
+          월평균 매출 <strong>68.7만원</strong>
+        </div>
+      </div>
+
+      <!-- 친구수 증가 추이 표 -->
+      <div style="margin-bottom:12px;">
+        <div style="font-size:12.5px;font-weight:700;color:#334155;margin-bottom:6px;">📈 월별 친구수 증가 추이</div>
+        <table style="font-size:12px;border-collapse:collapse;width:100%;">
+          <thead><tr style="background:#f1f5f9;">
+            <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:left;">기준월</th>
+            <th style="padding:6px 10px;border:1px solid #e2e8f0;">친구수</th>
+            <th style="padding:6px 10px;border:1px solid #e2e8f0;">전월 대비</th>
+            <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:left;">발송 여부</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:5px 10px;border:1px solid #e2e8f0;">2025-09</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;">18,696</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;">—</td><td style="padding:5px 10px;border:1px solid #e2e8f0;">동보 발송 (9/30, 19,094명)</td></tr>
+            <tr><td style="padding:5px 10px;border:1px solid #e2e8f0;">2025-10</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;">19,265</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;color:#166534;">+569</td><td style="padding:5px 10px;border:1px solid #e2e8f0;">동보 발송 (10/27, 19,494명)</td></tr>
+            <tr><td style="padding:5px 10px;border:1px solid #e2e8f0;">2025-11</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;">19,645</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;color:#166534;">+380</td><td style="padding:5px 10px;border:1px solid #e2e8f0;">발송 없음</td></tr>
+            <tr><td style="padding:5px 10px;border:1px solid #e2e8f0;">2025-12</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;">20,124</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;color:#166534;">+479</td><td style="padding:5px 10px;border:1px solid #e2e8f0;">발송 없음</td></tr>
+            <tr style="background:#eff6ff;"><td style="padding:5px 10px;border:1px solid #e2e8f0;">2026-01</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;font-weight:700;">20,658</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;color:#166534;">+534</td><td style="padding:5px 10px;border:1px solid #e2e8f0;color:#1d4ed8;">타겟 발송 2건 (19,796 / 20,319명)</td></tr>
+            <tr style="background:#eff6ff;"><td style="padding:5px 10px;border:1px solid #e2e8f0;">2026-02</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;font-weight:700;">21,167</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;color:#166534;">+509</td><td style="padding:5px 10px;border:1px solid #e2e8f0;">발송 없음</td></tr>
+            <tr style="background:#eff6ff;"><td style="padding:5px 10px;border:1px solid #e2e8f0;">2026-03</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;font-weight:700;">21,673</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;color:#166534;">+506</td><td style="padding:5px 10px;border:1px solid #e2e8f0;color:#1d4ed8;">타겟 발송 2건 (20,944 / 20,967명)</td></tr>
+            <tr style="background:#eff6ff;"><td style="padding:5px 10px;border:1px solid #e2e8f0;">2026-04</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;font-weight:700;">21,992</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;color:#166534;">+319</td><td style="padding:5px 10px;border:1px solid #e2e8f0;color:#1d4ed8;">타겟 발송 1건 (21,062명)</td></tr>
+            <tr style="background:#eff6ff;"><td style="padding:5px 10px;border:1px solid #e2e8f0;">2026-05</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;font-weight:700;">22,584</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:right;color:#166534;">+592</td><td style="padding:5px 10px;border:1px solid #e2e8f0;">발송 없음</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px;font-size:13px;color:#14532d;line-height:1.8;">
+        <strong>📌 결론: 친구수 증가 + 타겟팅이 사실상 전체발송 수준 — 두 요인이 동시에 작용</strong><br><br>
+        <strong>① 친구수가 꾸준히 증가했다</strong><br>
+        전기(2025-09 기준) 친구수 18,696명 → 후기(2026-04 기준) 21,992명으로
+        분석 기간 동안 <strong>+3,296명(+17.6%) 증가</strong>했습니다.
+        동보였다면 수신자도 같은 비율로 늘었을 것이므로, 친구수 증가 자체가 수신자 증가의 일부를 설명합니다.<br><br>
+        <strong>② 타겟팅인데 커버리지가 동보 수준(95~98%)</strong><br>
+        후기 타겟팅 5건의 수신자를 당시 친구수와 비교하면:
+        <ul style="margin:6px 0 6px 18px;">
+          <li>2026-01-01: 19,796명 / 20,658명 = <strong>95.8%</strong></li>
+          <li>2026-01-26: 20,319명 / 20,658명 = <strong>98.4%</strong></li>
+          <li>2026-03-21: 20,944명 / 21,673명 = <strong>96.6%</strong></li>
+          <li>2026-03-24: 20,967명 / 21,673명 = <strong>96.7%</strong></li>
+          <li>2026-04-04: 21,062명 / 21,992명 = <strong>95.8%</strong> → 5건 평균 수신자 <strong>20,418명</strong></li>
+        </ul>
+        타겟팅임에도 커버리지가 <strong>95~98%</strong>로 동보와 거의 차이가 없습니다.
+        즉 이 채널의 타겟팅 조건은 매우 넓게 설정돼 있어,
+        <strong>사실상 동보와 동일하게 거의 전 친구에게 발송</strong>되고 있습니다.<br><br>
+        <strong>③ 어떤 타겟팅 조건을 사용했나?</strong><br>
+        발송 로그(plusfriend_send_msg)에는 타겟팅 세부 조건이 기록되지 않아 정확한 조건은 확인할 수 없습니다.
+        다만 커버리지가 <strong>95~98%</strong>라는 사실에서 역추정하면, 아래 중 하나의 조건으로 추정됩니다:
+        <ul style="margin:6px 0 6px 18px;">
+          <li><strong>그룹지정 — 전체 친구 포함 그룹</strong>: 관리자가 "전체 고객" 그룹을 만들어 해당 그룹으로 발송. cpms=20이 과금되지만 실질적으로 전체발송과 동일</li>
+          <li><strong>연령 조건 — 매우 넓은 범위</strong>: 예) 15세~65세 등 거의 전 연령 포함하는 설정</li>
+          <li><strong>그룹제외지정 — 제외 대상 없음 또는 극소수</strong>: 제외 조건을 거의 아무도 해당 안 되는 조건으로 설정</li>
+        </ul>
+        어떤 방식이든 <strong>타겟팅 단가(cpms=20)를 적용하면서 전체 친구에게 발송하는 구조</strong>가 만들어진 것입니다.<br><br>
+        <strong>④ 단가 인상(15원 → 20원)의 효과</strong><br>
+        수신자 수가 줄지 않은 상태에서 단가만 33% 올랐으니,
+        전기 동보 대비 수익이 증가한 것은 당연한 결과입니다.
+        발송 건수도 3건 → 5건으로 늘어 총량도 기여했습니다.
+      </div>
+    </div>
+
+    <div style="border-bottom:1px dashed #e2e8f0;margin-bottom:20px;"></div>
+
+    <!-- ── 채널 4: 김송이의원 ── -->
+    <div style="margin-bottom:28px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="background:#ca8a04;color:white;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;">유형 C</span>
+        <span style="font-size:16px;font-weight:800;color:#1e293b;">김송이의원</span>
+        <span style="font-size:13px;color:#64748b;">병원 · 친구수 23,870명</span>
+        <span style="background:#dcfce7;color:#166534;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;">매출 +25.0%  전기 24만 → 후기 30만원</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:12.5px;">
+          <div style="font-weight:700;margin-bottom:6px;color:#475569;">전기 (2025.06~11) — 발송이 매우 드묾</div>
+          7월, 9월, 10월, 11월 단 4회만 발송<br>
+          월평균 <strong>0.8건</strong> (6개월 중 4번만 보냄)<br>
+          월평균 매출 <strong>24.4만원</strong> (발송 없는 달 포함)
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;font-size:12.5px;">
+          <div style="font-weight:700;margin-bottom:6px;color:#1d4ed8;">후기 (2026.01~05) — 매월 발송</div>
+          1월, 3월, 4월 발송 (3회)<br>
+          월평균 <strong>1.4건</strong><br>
+          월평균 매출 <strong>30.5만원</strong> (발송 없는 달 포함)
+        </div>
+      </div>
+
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;font-size:13px;color:#78350f;line-height:1.8;">
+        <strong>📌 매출 증가의 핵심 원인: 발송 활성화 (유형 C)</strong><br>
+        김송이의원은 전기에 <strong>6개월 중 4번</strong>밖에 보내지 않았습니다.
+        반면 후기에는 <strong>5개월 중 3번</strong>으로 상대적으로 더 규칙적으로 발송했습니다.
+        타겟팅으로 바꾸면서 수신자는 19,484명 → 10,571명으로 줄었지만,
+        단가가 올라(15→20원) 건당 매출은 <strong>29.3만원 → 49.3만원으로 증가</strong>했습니다.<br><br>
+        이 채널의 매출 증가는 "타겟팅이 유리해서"라기보다,
+        <strong>원래 발송 빈도가 너무 낮아서 작은 변화에도 평균이 올라 보이는 효과</strong>입니다.
+        건당 수신자가 반으로 줄었음에도 단가 인상으로 겨우 25% 증가에 그쳤습니다.
+      </div>
+    </div>
+
+    <div style="border-bottom:1px dashed #e2e8f0;margin-bottom:20px;"></div>
+
+    <!-- ── 채널 5: BMW 삼천리모터스 ── -->
+    <div style="margin-bottom:24px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="background:#ca8a04;color:white;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;">유형 C</span>
+        <span style="font-size:16px;font-weight:800;color:#1e293b;">BMW 공식딜러 삼천리모터스</span>
+        <span style="font-size:13px;color:#64748b;">자동차 · 친구수 35,561명</span>
+        <span style="background:#fef9c3;color:#78350f;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;">매출 +5.6%  전기 54만 → 후기 57만원</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:12.5px;">
+          <div style="font-weight:700;margin-bottom:6px;color:#475569;">전기 (2025.06~11)</div>
+          매월 동보 1건씩만 규칙적으로 발송<br>
+          메시지당 수신자 <strong>35,737명</strong> (거의 전체 친구)<br>
+          월평균 매출 <strong>53.6만원</strong>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;font-size:12.5px;">
+          <div style="font-weight:700;margin-bottom:6px;color:#1d4ed8;">후기 (2026.01~05)</div>
+          2026-04에만 타겟팅 9건 추가 발송<br>
+          메시지당 수신자 <strong>13,347명</strong><br>
+          월평균 매출 <strong>57.4만원</strong>
+        </div>
+      </div>
+
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;font-size:13px;color:#78350f;line-height:1.8;">
+        <strong>📌 매출 증가의 핵심 원인: 4월 이벤트성 대량 발송 (유형 C)</strong><br>
+        BMW 삼천리모터스는 전기에도 후기에도 <strong>매월 동보 1건</strong>씩 규칙적으로 발송했습니다.
+        전환 후 달라진 점은 2026년 4월에만 <strong>타겟팅 9건을 추가 발송</strong>한 것입니다.
+        이 1개월 이벤트로 4월 매출이 52만원 → 78만원으로 크게 오르면서 후기 평균 매출을 끌어올렸습니다.<br><br>
+        <strong>5개월 후기 평균을 4월 이벤트 1번이 왜곡</strong>한 경우입니다.
+        실제로 4월을 제외한 나머지 달(1월, 2월, 3월, 5월)은 동보 1건씩으로 전기와 거의 동일합니다.
+        타겟팅이 효과적이었다기보다는 <strong>4월 일시적 발송 증가의 영향</strong>으로 봐야 합니다.
+      </div>
+    </div>
+
+    <!-- 종합 인사이트 -->
+    <div style="background:#1e3a5f;color:white;border-radius:12px;padding:20px 24px;margin-top:8px;">
+      <div style="font-size:15px;font-weight:800;margin-bottom:14px;">📋 종합 — 타겟팅 전환 후 매출이 오른 진짜 이유</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px;line-height:1.8;">
+        <div>
+          <div style="font-weight:700;color:#93c5fd;margin-bottom:6px;">✅ 정말 타겟팅이 효과적이었던 경우</div>
+          <strong style="color:#86efac;">부산식자재마트강서점 (유형 A)</strong><br>
+          타겟팅을 해도 수신자 수가 줄지 않아<br>
+          단가 인상 효과가 그대로 매출로 이어짐.<br>
+          이 경우가 타겟팅 전환의 "이상적 케이스"<br><br>
+          <strong style="color:#86efac;">소리튠 일부 (유형 B)</strong><br>
+          타겟 수신자 커버리지 75~95% 유지 + 발송 빈도 증가<br>
+          높은 커버리지 유지 = 사실상 동보 수준의 도달
+        </div>
+        <div>
+          <div style="font-weight:700;color:#fca5a5;margin-bottom:6px;">⚠️ 타겟팅보다 다른 요인이 작동한 경우</div>
+          <strong style="color:#fde68a;">알파베베 (유형 B)</strong><br>
+          수신자는 줄었지만 발송 건수를 4.7배 늘림.<br>
+          타겟팅의 효과가 아닌 "발송 활성화" 전략의 효과.<br><br>
+          <strong style="color:#fde68a;">김송이의원, BMW삼천리모터스 (유형 C)</strong><br>
+          원래 발송 빈도가 너무 낮았거나, 특정 월 이벤트가<br>
+          평균을 왜곡함. 타겟팅의 직접 효과로 보기 어려움.
+        </div>
+      </div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.2);font-size:12.5px;color:#cbd5e1;line-height:1.8;">
+        💡 <strong style="color:white;">결론:</strong>
+        타겟팅 전환 후 매출이 오르려면 ① 타겟 수신자 커버리지를 친구수의 75% 이상으로 유지하거나,
+        ② 발송 빈도를 크게 늘려 총 수신자 수를 보완해야 합니다.
+        단순히 동보를 타겟팅으로 바꾸는 것만으로는 <strong>단가 인상(+33%)이 수신자 감소(-70%~80%)를 상쇄하지 못해 매출이 감소</strong>하는 것이 일반적입니다.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- 6. 열람율 변화 분석 -->
+<div class="section">
+  <div class="sh">
+    <h2>👁️ 타겟팅 전환 후 열람율(open rate) 변화</h2>
+    <span class="badge b-purple">전환 채널 20개 · 전후기 가중평균 비교</span>
+  </div>
+  <div class="sb">
+    <div class="info">
+      <strong>열람율 = 노출 수(imp+viewable) / 발송성공 수</strong> — 위키 bizservice 기준과 동일한 정의.<br>
+      전환 전(2025-06~11) vs 전환 후(2026-01~05) 채널별 가중평균 열람율을 비교합니다.
+    </div>
+
+    <!-- 핵심 요약 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px;">
+      <div style="border:1px solid #fca5a5;border-top:3px solid #dc2626;border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:11px;color:#991b1b;font-weight:700;margin-bottom:6px;">20개 채널 중<br>열람율 상승 채널</div>
+        <div style="font-size:32px;font-weight:800;color:#dc2626;">0개</div>
+        <div style="font-size:12px;color:#991b1b;margin-top:4px;">전 채널 하락</div>
+      </div>
+      <div style="border:1px solid #fca5a5;border-top:3px solid #dc2626;border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:11px;color:#991b1b;font-weight:700;margin-bottom:6px;">평균 열람율 변화</div>
+        <div style="font-size:32px;font-weight:800;color:#dc2626;">-4.1%p</div>
+        <div style="font-size:12px;color:#991b1b;margin-top:4px;">전기 평균 62.3% → 후기 58.2%</div>
+      </div>
+      <div style="border:1px solid #fde68a;border-top:3px solid #ca8a04;border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:11px;color:#92400e;font-weight:700;margin-bottom:6px;">5%p 이상 유의미<br>하락 채널</div>
+        <div style="font-size:32px;font-weight:800;color:#ca8a04;">7개</div>
+        <div style="font-size:12px;color:#92400e;margin-top:4px;">클래파(-9.3) 유니세프(-7.1) 등</div>
+      </div>
+    </div>
+
+    <!-- 전체 비교 표 -->
+    <div class="tscroll">
+    <table>
+      <thead>
+        <tr>
+          <th rowspan="2" style="text-align:left;min-width:120px;">채널명</th>
+          <th rowspan="2" style="text-align:center;min-width:40px;">유형</th>
+          <th colspan="3" class="c-dong">전기 (2025.06~11)</th>
+          <th colspan="3" class="c-tgt">후기 (2026.01~05)</th>
+          <th rowspan="2" style="background:#faf5ff;color:#6d28d9;border-left:2px solid #ddd6fe;min-width:70px;">열람율<br>변화</th>
+          <th rowspan="2">매출<br>변화</th>
+        </tr>
+        <tr>
+          <th class="c-dong" style="font-size:10px;">전체<br>열람율</th>
+          <th class="c-dong" style="font-size:10px;">동보<br>열람율</th>
+          <th class="c-dong" style="font-size:10px;">타겟<br>열람율</th>
+          <th class="c-tgt" style="font-size:10px;">전체<br>열람율</th>
+          <th class="c-tgt" style="font-size:10px;">동보<br>열람율</th>
+          <th class="c-tgt" style="font-size:10px;">타겟<br>열람율</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="l"><strong>클래파</strong></td><td class="c">B</td>
+          <td class="c-dong">65.49%</td><td class="c-dong">66.06%</td><td class="c-dong">56.74%</td>
+          <td class="c-tgt">56.18%</td><td class="c-tgt">57.74%</td><td class="c-tgt">54.72%</td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;text-align:center;">▼ 9.3%p</td>
+          <td style="text-align:center;color:#dc2626;">-23.5%</td></tr>
+        <tr><td class="l"><strong>유니세프</strong></td><td class="c">C</td>
+          <td class="c-dong">59.60%</td><td class="c-dong">59.60%</td><td class="c-dong">—</td>
+          <td class="c-tgt">52.51%</td><td class="c-tgt">54.59%</td><td class="c-tgt">39.78%</td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;text-align:center;">▼ 7.1%p</td>
+          <td style="text-align:center;color:#dc2626;">-90.1%</td></tr>
+        <tr><td class="l"><strong>그린피스서울</strong></td><td class="c">C</td>
+          <td class="c-dong">61.14%</td><td class="c-dong">61.81%</td><td class="c-dong">57.18%</td>
+          <td class="c-tgt">54.41%</td><td class="c-tgt">—</td><td class="c-tgt">54.41%</td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;text-align:center;">▼ 6.7%p</td>
+          <td style="text-align:center;color:#dc2626;">-29.5%</td></tr>
+        <tr><td class="l"><strong>소리튠</strong></td><td class="c">B</td>
+          <td class="c-dong">63.63%</td><td class="c-dong">63.79%</td><td class="c-dong">61.75%</td>
+          <td class="c-tgt">56.91%</td><td class="c-tgt">56.61%</td><td class="c-tgt">57.10%</td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;text-align:center;">▼ 6.7%p</td>
+          <td style="text-align:center;color:#166534;">+106.9%</td></tr>
+        <tr class="hl"><td class="l"><strong>부산식자재마트강서점</strong></td><td class="c">A</td>
+          <td class="c-dong">78.36%</td><td class="c-dong">78.36%</td><td class="c-dong">—</td>
+          <td class="c-tgt">73.08%</td><td class="c-tgt">—</td><td class="c-tgt">73.08%</td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;text-align:center;">▼ 5.3%p</td>
+          <td style="text-align:center;color:#166534;">+192.9%</td></tr>
+        <tr><td class="l"><strong>비즈부스트</strong></td><td class="c">B</td>
+          <td class="c-dong">46.55%</td><td class="c-dong">47.57%</td><td class="c-dong">44.79%</td>
+          <td class="c-tgt">41.51%</td><td class="c-tgt">41.61%</td><td class="c-tgt">41.45%</td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;text-align:center;">▼ 5.0%p</td>
+          <td style="text-align:center;color:#dc2626;">-25.0%</td></tr>
+        <tr><td class="l"><strong>한국잡월드</strong></td><td class="c">C</td>
+          <td class="c-dong">68.46%</td><td class="c-dong">68.46%</td><td class="c-dong">—</td>
+          <td class="c-tgt">63.42%</td><td class="c-tgt">61.70%</td><td class="c-tgt">66.60%</td>
+          <td style="background:#fee2e2;color:#dc2626;font-weight:700;text-align:center;">▼ 5.0%p</td>
+          <td style="text-align:center;color:#dc2626;">-16.7%</td></tr>
+        <tr><td class="l">당근영어</td><td class="c">B</td>
+          <td class="c-dong">72.00%</td><td class="c-dong">72.00%</td><td class="c-dong">—</td>
+          <td class="c-tgt">67.57%</td><td class="c-tgt">66.20%</td><td class="c-tgt">85.79%</td>
+          <td style="background:#fef9c3;color:#92400e;text-align:center;">▼ 4.4%p</td>
+          <td style="text-align:center;color:#dc2626;">-2.4%</td></tr>
+        <tr><td class="l">르베이지</td><td class="c">C</td>
+          <td class="c-dong">38.90%</td><td class="c-dong">38.90%</td><td class="c-dong">—</td>
+          <td class="c-tgt">34.53%</td><td class="c-tgt">34.53%</td><td class="c-tgt">—</td>
+          <td style="background:#fef9c3;color:#92400e;text-align:center;">▼ 4.4%p</td>
+          <td style="text-align:center;color:#dc2626;">-24.5%</td></tr>
+        <tr><td class="l">브라운물티슈</td><td class="c">B</td>
+          <td class="c-dong">62.96%</td><td class="c-dong">63.16%</td><td class="c-dong">61.54%</td>
+          <td class="c-tgt">58.64%</td><td class="c-tgt">58.90%</td><td class="c-tgt">58.17%</td>
+          <td style="background:#fef9c3;color:#92400e;text-align:center;">▼ 4.3%p</td>
+          <td style="text-align:center;color:#dc2626;">-12.9%</td></tr>
+        <tr><td class="l">김송이의원</td><td class="c">C</td>
+          <td class="c-dong">65.99%</td><td class="c-dong">65.99%</td><td class="c-dong">—</td>
+          <td class="c-tgt">61.95%</td><td class="c-tgt">—</td><td class="c-tgt">61.95%</td>
+          <td style="background:#fef9c3;color:#92400e;text-align:center;">▼ 4.0%p</td>
+          <td style="text-align:center;color:#166534;">+25.0%</td></tr>
+        <tr><td class="l">JILLSTUART NY</td><td class="c">C</td>
+          <td class="c-dong">53.77%</td><td class="c-dong">53.77%</td><td class="c-dong">—</td>
+          <td class="c-tgt">50.36%</td><td class="c-tgt">—</td><td class="c-tgt">50.36%</td>
+          <td style="text-align:center;color:#64748b;">▼ 3.4%p</td>
+          <td style="text-align:center;color:#dc2626;">-58.8%</td></tr>
+        <tr><td class="l">모이몰른</td><td class="c">B</td>
+          <td class="c-dong">62.48%</td><td class="c-dong">62.27%</td><td class="c-dong">68.19%</td>
+          <td class="c-tgt">59.65%</td><td class="c-tgt">59.49%</td><td class="c-tgt">64.14%</td>
+          <td style="text-align:center;color:#64748b;">▼ 2.8%p</td>
+          <td style="text-align:center;color:#dc2626;">-17.4%</td></tr>
+        <tr><td class="l">FEBC극동방송</td><td class="c">C</td>
+          <td class="c-dong">79.37%</td><td class="c-dong">79.37%</td><td class="c-dong">—</td>
+          <td class="c-tgt">76.87%</td><td class="c-tgt">76.87%</td><td class="c-tgt">100%</td>
+          <td style="text-align:center;color:#64748b;">▼ 2.5%p</td>
+          <td style="text-align:center;color:#dc2626;">-22.0%</td></tr>
+        <tr><td class="l">현대아울렛가산점온라인</td><td class="c">B</td>
+          <td class="c-dong">62.09%</td><td class="c-dong">61.83%</td><td class="c-dong">—</td>
+          <td class="c-tgt">59.74%</td><td class="c-tgt">—</td><td class="c-tgt">59.74%</td>
+          <td style="text-align:center;color:#64748b;">▼ 2.4%p</td>
+          <td style="text-align:center;color:#dc2626;">-24.7%</td></tr>
+        <tr><td class="l">파스타</td><td class="c">B</td>
+          <td class="c-dong">54.69%</td><td class="c-dong">53.98%</td><td class="c-dong">59.16%</td>
+          <td class="c-tgt">52.55%</td><td class="c-tgt">51.74%</td><td class="c-tgt">54.14%</td>
+          <td style="text-align:center;color:#64748b;">▼ 2.1%p</td>
+          <td style="text-align:center;color:#dc2626;">-62.3%</td></tr>
+        <tr><td class="l">알파베베</td><td class="c">B</td>
+          <td class="c-dong">62.18%</td><td class="c-dong">62.18%</td><td class="c-dong">—</td>
+          <td class="c-tgt">60.27%</td><td class="c-tgt">60.26%</td><td class="c-tgt">76.04%</td>
+          <td style="text-align:center;color:#64748b;">▼ 1.9%p</td>
+          <td style="text-align:center;color:#166534;">+74.6%</td></tr>
+        <tr><td class="l">SOUP MALL</td><td class="c">B</td>
+          <td class="c-dong">57.08%</td><td class="c-dong">56.79%</td><td class="c-dong">—</td>
+          <td class="c-tgt">55.40%</td><td class="c-tgt">—</td><td class="c-tgt">55.40%</td>
+          <td style="text-align:center;color:#64748b;">▼ 1.7%p</td>
+          <td style="text-align:center;color:#dc2626;">-21.3%</td></tr>
+        <tr><td class="l">롯데하이마트오광장점</td><td class="c">B</td>
+          <td class="c-dong">68.01%</td><td class="c-dong">67.68%</td><td class="c-dong">71.00%</td>
+          <td class="c-tgt">66.88%</td><td class="c-tgt">66.16%</td><td class="c-tgt">67.19%</td>
+          <td style="text-align:center;color:#64748b;">▼ 1.1%p</td>
+          <td style="text-align:center;color:#dc2626;">-16.7%</td></tr>
+        <tr><td class="l">BMW삼천리모터스</td><td class="c">C</td>
+          <td class="c-dong">64.20%</td><td class="c-dong">64.20%</td><td class="c-dong">—</td>
+          <td class="c-tgt">63.12%</td><td class="c-tgt">61.74%</td><td class="c-tgt">81.50%</td>
+          <td style="text-align:center;color:#64748b;">▼ 1.1%p</td>
+          <td style="text-align:center;color:#166534;">+5.6%</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="note" style="margin-top:8px;">
+      📌 열람율 = 노출 고유 사용자 수(u_account_id) / 발송성공 수 × 100 — 메시지별 가중평균<br>
+      📌 — 표시: 해당 기간에 해당 유형 발송 없음 / 100%: 발송 건수 소량으로 표본 오차 가능성 있음
+    </div>
+
+    <!-- 인사이트 박스 -->
+    <div style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="border:1px solid #fca5a5;border-top:3px solid #dc2626;border-radius:10px;padding:16px;">
+        <div style="font-weight:700;color:#991b1b;margin-bottom:10px;font-size:13.5px;">📉 타겟팅 전환 시 열람율은 항상 하락한다</div>
+        <div style="font-size:13px;color:#7f1d1d;line-height:1.8;">
+          전환 채널 <strong>20개 모두 열람율이 하락</strong>했습니다. 상승한 채널은 단 한 곳도 없습니다.<br><br>
+          평균 하락폭: <strong>-4.1%p</strong><br>
+          위키 전체 기준치 논타게팅 67.19% vs 타겟팅 63.75% 차이(-3.44%p)와
+          <strong>거의 동일한 수준</strong>으로 일치합니다.<br><br>
+          타겟팅이 "더 관심 있는 사람만 선별"한다는 직관과 반대로,
+          실제로는 <strong>열람율이 오히려 떨어지는</strong> 결과가 나옵니다.
+        </div>
+      </div>
+      <div style="border:1px solid #ddd6fe;border-top:3px solid #6d28d9;border-radius:10px;padding:16px;">
+        <div style="font-weight:700;color:#4c1d95;margin-bottom:10px;font-size:13.5px;">🔍 매출과 열람율은 별개로 움직인다</div>
+        <div style="font-size:13px;color:#4c1d95;line-height:1.8;">
+          열람율 하락 폭이 가장 큰 채널 중에도 <strong>매출이 오른 케이스</strong>가 있습니다.<br><br>
+          <strong>소리튠</strong>: 열람율 -6.7%p ↓ 이지만 매출 +106.9% ↑<br>
+          → 열람율은 떨어졌지만 발송 빈도 증가로 총량 보완<br><br>
+          <strong>부산식자재마트강서점</strong>: 열람율 -5.3%p ↓ 이지만 매출 +192.9% ↑<br>
+          → 커버리지 95%+ 유지 + 친구수 증가 + 단가 인상<br><br>
+          열람율 ≠ 매출. <strong>실질 매출은 발송 건수 × 수신자 수 × 단가</strong>가 결정합니다.
+        </div>
+      </div>
+    </div>
+
+    <!-- 결론 -->
+    <div style="margin-top:16px;background:#1e3a5f;color:white;border-radius:10px;padding:18px 22px;">
+      <div style="font-size:14px;font-weight:800;margin-bottom:10px;">💡 결론: 왜 타겟팅 전환 후 열람율이 떨어지는가?</div>
+      <div style="font-size:13px;line-height:1.85;color:#cbd5e1;">
+        타겟팅 조건을 설정하면 <strong>"이 메시지에 관심 있을 것 같은 사람"</strong>만 골라 보냅니다.
+        그런데 이 선별 과정에서 실제로는 관심도가 <strong>평균보다 낮은 그룹이 포함</strong>되거나,
+        반대로 <strong>동보 시절에 가장 잘 열람하던 높은 관심도 그룹이 제외</strong>될 수 있습니다.<br><br>
+        또한 타겟팅이 <strong>"활성 친구"보다 "비활성 친구"를 포함</strong>하는 넓은 조건으로 설정되는 경우(예: 소리튠, 부산식자재마트),
+        수신자 모수는 유지되지만 평균 관심도는 낮아져 열람율이 하락합니다.<br><br>
+        결국 위키 데이터와 이번 분석 모두 같은 결론을 가리킵니다:
+        <strong style="color:white;">타겟팅은 열람율을 높이지 않으며, 수신자 모수를 줄여 매출에도 부정적으로 작용합니다.</strong>
+        타겟팅이 효과를 내려면 조건을 정교하게 설정해 열람율을 대폭 높이거나,
+        발송 빈도를 충분히 늘려 수신자 감소를 상쇄해야 합니다.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div style="text-align:center;padding:16px;color:#94a3b8;font-size:12px;">
+  채널메시지 타겟팅 분석 리포트 · 카카오 비즈니스 데이터 분석 · 2026-06-12
+</div>
+</body>
+</html>
